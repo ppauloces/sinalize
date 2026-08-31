@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Sinalize — Controle</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #fff;
+      padding: 18px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 1.05rem;
+      color: #7c5cfc;
+      letter-spacing: 1px;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* === Config API key === */
+    #apiKeyWrap {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    #apiKey {
+      flex: 1;
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: #e2e8f0;
+      font-size: 0.75rem;
+      font-family: inherit;
+      outline: none;
+    }
+
+    #apiKey:focus { border-color: #7c5cfc; }
+
+    .key-status {
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #1e1e3a;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    .key-status.ok { color: #34d399; }
+
+    /* === Voz === */
+    .voice-area {
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #transcript {
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      min-height: 32px;
+      line-height: 1.4;
+    }
+
+    #micState {
+      font-size: 0.75rem;
+      color: #555570;
+      min-height: 16px;
+    }
+
+    #micState.recording { color: #f87171; }
+    #micState.processing { color: #fbbf24; }
+    #micState.ok { color: #34d399; }
+
+    #btnMic {
+      background: #7c5cfc;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #btnMic.recording {
+      background: #dc2626;
+      animation: pulse 1.5s infinite;
+    }
+
+    #btnMic:disabled {
+      background: #2d2d4e;
+      color: #555570;
+      cursor: not-allowed;
+      animation: none;
+    }
+
+    /* === Frases prontas === */
+    .quick-phrases {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .quick-phrases button {
+      background: #1e1e3a;
+      color: #e2e8f0;
+      border: 1px solid #2d2d4e;
+      border-radius: 8px;
+      padding: 9px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .quick-phrases button:hover {
+      background: #2d2d4e;
+      border-color: #7c5cfc;
+    }
+
+    /* === Texto manual === */
+    #input {
+      background: #1a1a2e;
+      border: 1px solid #2d2d4e;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      resize: none;
+      font-family: inherit;
+      outline: none;
+      min-height: 50px;
+    }
+
+    #input:focus { border-color: #7c5cfc; }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .controls button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #btnSend { background: #7c5cfc; color: white; }
+    #btnClear {
+      background: #1e1e3a;
+      color: #9ca3af;
+      border: 1px solid #2d2d4e;
+      flex: 0.3;
+    }
+
+    #status {
+      font-size: 0.75rem;
+      color: #555570;
+      text-align: center;
+      min-height: 16px;
+    }
+
+    #status.active { color: #34d399; }
+    #status.error { color: #f87171; }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
+      50% { box-shadow: 0 0 0 8px transparent; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🤟 Sinalize</h1>
+
+  <div class="section-label">Chave OpenAI (Whisper)</div>
+  <div id="apiKeyWrap">
+    <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off"/>
+    <span id="keyStatus" class="key-status">Sem chave</span>
+  </div>
+
+  <div class="section-label">Voz (Whisper)</div>
+  <div class="voice-area">
+    <div id="transcript">Clique no microfone e fale uma frase...</div>
+    <div id="micState"></div>
+    <button id="btnMic" onclick="toggleMic()">🎙️ Iniciar gravação</button>
+  </div>
+
+  <div class="section-label">Frases prontas</div>
+  <div class="quick-phrases">
+    <button onclick="sendPhrase('Olá, bom dia')">Olá, bom dia</button>
+    <button onclick="sendPhrase('Tudo bem com você')">Tudo bem com você</button>
+    <button onclick="sendPhrase('Muito obrigado')">Muito obrigado</button>
+    <button onclick="sendPhrase('Como você está')">Como você está</button>
+    <button onclick="sendPhrase('Bem vindo')">Bem vindo</button>
+    <button onclick="sendPhrase('Sim')">Sim</button>
+  </div>
+
+  <div class="section-label">Texto manual (Ctrl+Enter envia)</div>
+  <textarea id="input" placeholder="Digite o texto..."></textarea>
+  <div class="controls">
+    <button id="btnSend" onclick="sendInput()">🤟 Traduzir</button>
+    <button id="btnClear" onclick="clearInput()">🗑️</button>
+  </div>
+
+  <div id="status">Pronto</div>
+
+  <script>
+    const transcript = document.getElementById('transcript')
+    const micState = document.getElementById('micState')
+    const input = document.getElementById('input')
+    const status = document.getElementById('status')
+    const btnMic = document.getElementById('btnMic')
+    const apiKeyInput = document.getElementById('apiKey')
+    const keyStatus = document.getElementById('keyStatus')
+
+    // === Chave OpenAI (localStorage) ===
+    const STORAGE_KEY = 'sinalize_openai_key'
+
+    function refreshKeyStatus() {
+      const k = apiKeyInput.value.trim()
+      if (k.startsWith('sk-')) {
+        keyStatus.textContent = 'Chave OK'
+        keyStatus.className = 'key-status ok'
+      } else {
+        keyStatus.textContent = 'Sem chave'
+        keyStatus.className = 'key-status'
+      }
+    }
+
+    // Carrega chave salva
+    apiKeyInput.value = localStorage.getItem(STORAGE_KEY) || ''
+    refreshKeyStatus()
+
+    apiKeyInput.addEventListener('input', () => {
+      localStorage.setItem(STORAGE_KEY, apiKeyInput.value.trim())
+      refreshKeyStatus()
+    })
+
+    function setStatus(msg, cls = '') {
+      status.textContent = msg
+      status.className = cls
+    }
+
+    function setMicState(msg, cls = '') {
+      micState.textContent = msg
+      micState.className = cls
+    }
+
+    function send(text) {
+      const clean = (text || '').trim()
+      if (!clean) return
+      window.sinalize.translate(clean)
+      setStatus('Traduzindo: "' + clean + '"', 'active')
+    }
+
+    function sendPhrase(text) { send(text) }
+
+    function sendInput() {
+      const text = input.value
+      if (!text.trim()) {
+        setStatus('Digite algo primeiro')
+        return
+      }
+      send(text)
+    }
+
+    function clearInput() {
+      input.value = ''
+      input.focus()
+      setStatus('Pronto')
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        sendInput()
+      }
+    })
+
+    // === Whisper: gravação e transcrição ===
+    let mediaRecorder = null
+    let audioStream = null
+    let audioChunks = []
+    let isRecording = false
+
+    async function startRecording() {
+      const key = apiKeyInput.value.trim()
+      if (!key.startsWith('sk-')) {
+        setStatus('Cole sua chave OpenAI no campo acima', 'error')
+        return
+      }
+
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        })
+      } catch (e) {
+        setStatus('Microfone indisponível: ' + e.message, 'error')
+        return
+      }
+
+      audioChunks = []
+      const mimeType = 'audio/webm;codecs=opus'
+      mediaRecorder = new MediaRecorder(audioStream, { mimeType })
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data)
+      }
+
+      mediaRecorder.onstop = async () => {
+        // Libera mic
+        audioStream.getTracks().forEach(t => t.stop())
+        audioStream = null
+
+        if (audioChunks.length === 0) {
+          setMicState('Nenhum áudio capturado')
+          return
+        }
+
+        const blob = new Blob(audioChunks, { type: mimeType })
+        audioChunks = []
+
+        await transcribeAndSend(blob)
+      }
+
+      mediaRecorder.start()
+      isRecording = true
+      btnMic.textContent = '⏹️ Parar e traduzir'
+      btnMic.classList.add('recording')
+      setMicState('Gravando... fale agora', 'recording')
+      setStatus('Aguardando você parar a gravação...')
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop()
+      }
+      isRecording = false
+      btnMic.textContent = '🎙️ Iniciar gravação'
+      btnMic.classList.remove('recording')
+    }
+
+    async function transcribeAndSend(blob) {
+      const key = apiKeyInput.value.trim()
+      setMicState('Transcrevendo via Whisper...', 'processing')
+      btnMic.disabled = true
+
+      const form = new FormData()
+      form.append('file', blob, 'audio.webm')
+      form.append('model', 'whisper-1')
+      form.append('language', 'pt')
+
+      try {
+        const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + key },
+          body: form
+        })
+
+        if (!res.ok) {
+          const errText = await res.text()
+          console.error('Whisper API erro:', res.status, errText)
+          setMicState('Erro Whisper: ' + res.status, '')
+          setStatus('Falha na transcrição', 'error')
+          return
+        }
+
+        const data = await res.json()
+        const text = (data.text || '').trim()
+
+        if (!text) {
+          setMicState('Whisper não retornou texto')
+          return
+        }
+
+        transcript.textContent = text
+        setMicState('Transcrição OK', 'ok')
+        send(text)
+      } catch (e) {
+        console.error('fetch falhou:', e)
+        setMicState('Erro de rede', '')
+        setStatus('Sem conexão com OpenAI', 'error')
+      } finally {
+        btnMic.disabled = false
+      }
+    }
+
+    function toggleMic() {
+      if (!isRecording) {
+        startRecording()
+      } else {
+        stopRecording()
+      }
+    }
+  </script>
+
+</body>
+</html>
