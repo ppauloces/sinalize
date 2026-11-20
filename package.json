@@ -4,7 +4,7 @@
   "description": "Tradutor de voz para Libras em tempo real",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "node start.js"
   },
   "devDependencies": {
     "electron": "^34.5.8"
