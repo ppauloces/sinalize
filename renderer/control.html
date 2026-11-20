@@ -50,6 +50,10 @@
     }
 
     #apiKey:focus { border-color: #7c5cfc; }
+    #apiKey.attention {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
+    }
 
     .key-status {
       font-size: 0.7rem;
@@ -89,6 +93,7 @@
     #micState.recording { color: #f87171; }
     #micState.processing { color: #fbbf24; }
     #micState.ok { color: #34d399; }
+    #micState.error { color: #f87171; font-weight: 500; }
 
     #btnMic {
       background: #7c5cfc;
@@ -309,7 +314,11 @@
     async function startRecording() {
       const key = apiKeyInput.value.trim()
       if (!key.startsWith('sk-')) {
-        setStatus('Cole sua chave OpenAI no campo acima', 'error')
+        setMicState('⚠️ Cole sua chave OpenAI no campo acima', 'error')
+        setStatus('O reconhecimento de voz (Whisper) precisa de uma chave da OpenAI', 'error')
+        apiKeyInput.classList.add('attention')
+        apiKeyInput.focus()
+        setTimeout(() => apiKeyInput.classList.remove('attention'), 3000)
         return
       }
 

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, session, protocol, net } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { pathToFileURL } = require('url')
 
 // Suprime erros de rede do Chromium (chunked upload do VLibras)
 app.commandLine.appendSwitch('log-level', '3')
@@ -32,7 +33,7 @@ async function createWindows() {
       filePath = path.join(__dirname, 'renderer', 'control.html')
     }
 
-    return net.fetch('file://' + filePath)
+    return net.fetch(pathToFileURL(filePath).toString())
   })
 
   // Concede todas as permissões automaticamente (microfone, etc.)
@@ -81,7 +82,9 @@ async function createWindows() {
 }
 
 ipcMain.on('translate', (event, text) => {
-  avatarWindow.webContents.send('translate', text)
+  if (avatarWindow && !avatarWindow.isDestroyed()) {
+    avatarWindow.webContents.send('translate', text)
+  }
 })
 
 app.whenReady().then(createWindows)

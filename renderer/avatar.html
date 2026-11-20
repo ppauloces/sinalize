@@ -102,20 +102,53 @@
     const caption = document.getElementById('caption')
 
     // Aguarda o widget carregar e abre automaticamente
+    let widgetOpened = false
     const waitWidget = setInterval(() => {
+      if (window.VLibrasWidget && typeof window.VLibrasWidget.open === 'function') {
+        window.VLibrasWidget.open()
+        widgetOpened = true
+      }
+      const accessWrapper = document.getElementById('vlibras-access-wrapper')
+      if (accessWrapper && accessWrapper.shadowRoot) {
+        const btn = accessWrapper.shadowRoot.querySelector('#vlibras-button')
+        if (btn) {
+          btn.click()
+          widgetOpened = true
+        }
+      }
       const accessBtn = document.querySelector('[vw-access-button]')
       if (accessBtn) {
         accessBtn.click()
+        widgetOpened = true
+      }
+      if (widgetOpened && (window.plugin?.translate || window.vlibras?.translateAndPlay)) {
         clearInterval(waitWidget)
       }
     }, 500)
 
-    function getPlayer() {
-      // O Plugin se registra em window.plugin (chunk async).
-      // O Player fica em window.plugin.player e expõe .translate(text)
-      const p = window.plugin && window.plugin.player
-      if (p && typeof p.translate === 'function' && p.loaded) return p
-      return null
+    function doTranslate(text) {
+      if (!text || !text.trim()) return false
+
+      // 1. Novo VLibras v7 (window.plugin.translate)
+      if (window.plugin && typeof window.plugin.translate === 'function') {
+        window.plugin.translate(text)
+        return true
+      }
+      // 2. Novo VLibras v7 via window.vlibras
+      if (window.vlibras && typeof window.vlibras.translateAndPlay === 'function') {
+        window.vlibras.translateAndPlay(text)
+        return true
+      }
+      if (window.vlibras && typeof window.vlibras.translate === 'function') {
+        window.vlibras.translate(text)
+        return true
+      }
+      // 3. VLibras legado (window.plugin.player.translate)
+      if (window.plugin && window.plugin.player && typeof window.plugin.player.translate === 'function') {
+        window.plugin.player.translate(text)
+        return true
+      }
+      return false
     }
 
     // Recebe texto do main.js via IPC
@@ -124,20 +157,17 @@
     ipcRenderer.on('translate', (event, text) => {
       caption.textContent = text
 
+      // Tenta imediatamente
+      if (doTranslate(text)) return
+
+      // Se o widget ainda estiver carregando, tenta repetidamente por até 30s
+      let elapsed = 0
       const tryTranslate = setInterval(() => {
-        const player = getPlayer()
-        if (player) {
-          try {
-            player.translate(text)
-          } catch (e) {
-            console.error('translate falhou:', e)
-          }
+        elapsed += 300
+        if (doTranslate(text) || elapsed >= 30000) {
           clearInterval(tryTranslate)
         }
       }, 300)
-
-      // Desiste depois de 30s pra não rodar pra sempre
-      setTimeout(() => clearInterval(tryTranslate), 30000)
     })
   </script>
 
