@@ -2,235 +2,755 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sinalize — Controle</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #0f0f1a;
-      color: #fff;
-      padding: 18px;
-      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #0b0d14;
+      color: #f1f5f9;
+      padding: 16px;
+      height: 100vh;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+    }
+
+    body::-webkit-scrollbar {
+      width: 6px;
+    }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+    }
+
+    /* === Header & Botão de Configurações === */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 4px;
+    }
+
+    .brand-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     h1 {
-      font-size: 1.05rem;
-      color: #7c5cfc;
-      letter-spacing: 1px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.3px;
     }
 
-    .section-label {
-      font-size: 0.7rem;
-      color: #9ca3af;
+    .header-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(124, 58, 237, 0.18);
+      color: #c4b5fd;
+      border: 1px solid rgba(124, 58, 237, 0.3);
     }
 
-    /* === Config API key === */
+    .btn-icon {
+      background: #161a27;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-icon:hover {
+      background: #1e2436;
+      color: #f8fafc;
+      border-color: rgba(124, 58, 237, 0.4);
+      transform: rotate(30deg);
+    }
+
+    .btn-icon.active {
+      background: rgba(124, 58, 237, 0.25);
+      border-color: #8b5cf6;
+      color: #c4b5fd;
+    }
+
+    /* === Gaveta de Configurações (Retrátil) === */
+    .settings-drawer {
+      background: #131722;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.3s ease;
+      max-height: 280px;
+      opacity: 1;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .settings-drawer.collapsed {
+      max-height: 0;
+      opacity: 0;
+      padding: 0 14px;
+      border-color: transparent;
+      pointer-events: none;
+    }
+
+    .drawer-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
     #apiKeyWrap {
       display: flex;
-      gap: 6px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-key-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
       align-items: center;
     }
 
     #apiKey {
-      flex: 1;
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
-      border-radius: 6px;
-      padding: 6px 8px;
-      color: #e2e8f0;
-      font-size: 0.75rem;
-      font-family: inherit;
+      width: 100%;
+      background: #0b0d14;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px 34px 8px 10px;
+      color: #f1f5f9;
+      font-size: 0.8rem;
+      font-family: monospace;
       outline: none;
+      transition: all 0.2s ease;
     }
 
-    #apiKey:focus { border-color: #7c5cfc; }
+    #apiKey:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    }
+
     #apiKey.attention {
       border-color: #ef4444 !important;
       box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
+      animation: shake 0.35s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-4px); }
+      40%, 80% { transform: translateX(4px); }
+    }
+
+    .toggle-pass-btn {
+      position: absolute;
+      right: 8px;
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    .toggle-pass-btn:hover {
+      color: #94a3b8;
     }
 
     .key-status {
       font-size: 0.7rem;
-      padding: 4px 8px;
-      border-radius: 4px;
-      background: #1e1e3a;
-      color: #9ca3af;
+      font-weight: 600;
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: #181d2a;
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       white-space: nowrap;
     }
 
-    .key-status.ok { color: #34d399; }
+    .key-status.ok {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
 
-    /* === Voz === */
-    .voice-area {
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
-      border-radius: 10px;
+    /* Switch de Always on Top */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .setting-label {
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .setting-label small {
+      font-size: 0.68rem;
+      color: #64748b;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #272e42;
+      border-radius: 34px;
+      transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    input:checked + .slider {
+      background-color: #7c3aed;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    /* === Cards & Seções Comuns === */
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 2px;
+      margin-bottom: -4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card {
+      background: #131722;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
       padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    /* === Seção de Voz (Whisper) === */
+    .voice-area {
+      background: #131722;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     #transcript {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       color: #e2e8f0;
-      min-height: 32px;
-      line-height: 1.4;
+      min-height: 28px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .mic-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 18px;
     }
 
     #micState {
-      font-size: 0.75rem;
-      color: #555570;
-      min-height: 16px;
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 500;
     }
 
-    #micState.recording { color: #f87171; }
-    #micState.processing { color: #fbbf24; }
-    #micState.ok { color: #34d399; }
-    #micState.error { color: #f87171; font-weight: 500; }
+    #micState.recording { color: #f87171; font-weight: 600; }
+    #micState.processing { color: #fbbf24; font-weight: 600; }
+    #micState.ok { color: #34d399; font-weight: 600; }
+    #micState.error { color: #f87171; font-weight: 600; }
 
+    /* Barra visual de nível de áudio (Web Audio API) */
+    .audio-meter-wrap {
+      display: none;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-top: -2px;
+    }
+
+    .audio-meter-wrap.active {
+      display: block;
+    }
+
+    .audio-meter-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981 0%, #fbbf24 70%, #ef4444 100%);
+      border-radius: 9999px;
+      transition: width 0.06s ease;
+    }
+
+    /* Botão Principal de Microfone */
     #btnMic {
-      background: #7c5cfc;
-      color: white;
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      color: #ffffff;
       padding: 12px;
       border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
+      border-radius: 10px;
+      font-size: 0.92rem;
       font-weight: 600;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    #btnMic:hover:not(:disabled) {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      box-shadow: 0 6px 18px rgba(124, 58, 237, 0.45);
+      transform: translateY(-1px);
+    }
+
+    #btnMic:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    /* Estado Ativo Gravando */
     #btnMic.recording {
-      background: #dc2626;
-      animation: pulse 1.5s infinite;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5) !important;
+      animation: pulse-mic 1.4s infinite ease-in-out;
+    }
+
+    @keyframes pulse-mic {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
     }
 
     #btnMic:disabled {
-      background: #2d2d4e;
-      color: #555570;
+      background: #202638;
+      color: #64748b;
       cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
       animation: none;
     }
 
-    /* === Frases prontas === */
+    /* === Frases Prontas === */
     .quick-phrases {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
+      gap: 8px;
     }
 
-    .quick-phrases button {
-      background: #1e1e3a;
+    .phrase-btn {
+      background: #131722;
       color: #e2e8f0;
-      border: 1px solid #2d2d4e;
-      border-radius: 8px;
-      padding: 9px;
-      font-size: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9px;
+      padding: 9px 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
       cursor: pointer;
       font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      transition: all 0.2s ease;
+      position: relative;
     }
 
-    .quick-phrases button:hover {
-      background: #2d2d4e;
-      border-color: #7c5cfc;
+    .phrase-btn:hover {
+      background: #1e2436;
+      border-color: rgba(139, 92, 246, 0.4);
+      color: #ffffff;
+      transform: translateY(-1px);
     }
 
-    /* === Texto manual === */
+    .phrase-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Badge numérica do atalho de teclado */
+    .key-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .phrase-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* === Texto Manual === */
+    .input-card {
+      background: #131722;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
     #input {
-      background: #1a1a2e;
-      border: 1px solid #2d2d4e;
+      background: #0b0d14;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
-      padding: 10px;
-      font-size: 0.95rem;
-      color: #e2e8f0;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      color: #f8fafc;
       resize: none;
       font-family: inherit;
       outline: none;
-      min-height: 50px;
+      min-height: 54px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
-    #input:focus { border-color: #7c5cfc; }
+    #input:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+    }
 
     .controls {
       display: flex;
       gap: 8px;
     }
 
-    .controls button {
+    #btnSend {
       flex: 1;
       padding: 10px;
       border: none;
       border-radius: 8px;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
+      background: #7c3aed;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
     }
 
-    #btnSend { background: #7c5cfc; color: white; }
+    #btnSend:hover {
+      background: #8b5cf6;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+      transform: translateY(-1px);
+    }
+
     #btnClear {
-      background: #1e1e3a;
-      color: #9ca3af;
-      border: 1px solid #2d2d4e;
-      flex: 0.3;
+      background: #1c2232;
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
     }
 
-    #status {
-      font-size: 0.75rem;
-      color: #555570;
+    #btnClear:hover {
+      background: #252d42;
+      color: #f1f5f9;
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* === Histórico de Últimas Traduções === */
+    .recent-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .recent-item:hover {
+      background: rgba(124, 58, 237, 0.14);
+      border-color: rgba(124, 58, 237, 0.3);
+      color: #ffffff;
+      transform: translateX(2px);
+    }
+
+    .recent-item-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .recent-item-icon {
+      font-size: 0.72rem;
+      color: #8b5cf6;
+      opacity: 0.8;
+      flex-shrink: 0;
+    }
+
+    .recent-empty {
+      font-size: 0.72rem;
+      color: #475569;
       text-align: center;
-      min-height: 16px;
+      padding: 6px;
+      font-style: italic;
     }
 
-    #status.active { color: #34d399; }
-    #status.error { color: #f87171; }
-
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
-      50% { box-shadow: 0 0 0 8px transparent; }
+    /* === Barra de Status do Rodapé === */
+    #status {
+      font-size: 0.74rem;
+      color: #64748b;
+      text-align: center;
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 2px;
+      transition: color 0.2s ease;
     }
+
+    #status.active { color: #34d399; font-weight: 500; }
+    #status.error { color: #f87171; font-weight: 500; }
   </style>
 </head>
 <body>
 
-  <h1>🤟 Sinalize</h1>
+  <!-- Cabeçalho Principal -->
+  <header class="header">
+    <div class="brand-title-wrap">
+      <h1>Sinalize</h1>
+      <span class="header-badge">Controle</span>
+    </div>
+    <button id="btnSettings" class="btn-icon" title="Configurações (API e Janela)" onclick="toggleSettings()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+  </header>
 
-  <div class="section-label">Chave OpenAI (Whisper)</div>
-  <div id="apiKeyWrap">
-    <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off"/>
-    <span id="keyStatus" class="key-status">Sem chave</span>
+  <!-- Gaveta Retrátil de Configurações -->
+  <section id="settingsDrawer" class="settings-drawer collapsed">
+    <div class="drawer-title">
+      <span>Chave OpenAI (Whisper)</span>
+      <span id="keyStatus" class="key-status">Sem chave</span>
+    </div>
+    <div id="apiKeyWrap">
+      <div class="input-key-wrapper">
+        <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off"/>
+        <button type="button" class="toggle-pass-btn" onclick="togglePasswordVisibility()" title="Mostrar/Ocultar chave">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>Sempre no Topo (Avatar)</span>
+        <small>Fixa sobre Zoom, Meet e janelas</small>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleAlwaysTop"/>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- Área de Captura de Voz -->
+  <div class="section-label">
+    <span>Voz (Whisper)</span>
   </div>
-
-  <div class="section-label">Voz (Whisper)</div>
-  <div class="voice-area">
+  <section class="voice-area">
     <div id="transcript">Clique no microfone e fale uma frase...</div>
-    <div id="micState"></div>
-    <button id="btnMic" onclick="toggleMic()">🎙️ Iniciar gravação</button>
-  </div>
+    <div class="audio-meter-wrap" id="audioMeterWrap">
+      <div class="audio-meter-fill" id="meterBarFill"></div>
+    </div>
+    <div class="mic-footer">
+      <div id="micState">Aguardando gravação</div>
+    </div>
+    <button id="btnMic" onclick="toggleMic()">
+      <span id="btnMicIcon" class="btn-mic-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="22"></line>
+        </svg>
+      </span>
+      <span id="btnMicText">Iniciar gravação</span>
+    </button>
+  </section>
 
-  <div class="section-label">Frases prontas</div>
-  <div class="quick-phrases">
-    <button onclick="sendPhrase('Olá, bom dia')">Olá, bom dia</button>
-    <button onclick="sendPhrase('Tudo bem com você')">Tudo bem com você</button>
-    <button onclick="sendPhrase('Muito obrigado')">Muito obrigado</button>
-    <button onclick="sendPhrase('Como você está')">Como você está</button>
-    <button onclick="sendPhrase('Bem vindo')">Bem vindo</button>
-    <button onclick="sendPhrase('Sim')">Sim</button>
+  <!-- Frases Prontas com Atalhos Numéricos -->
+  <div class="section-label">
+    <span>Frases Prontas</span>
+    <small style="color: #64748b; font-weight: 400; text-transform: none;">Atalhos [1-6]</small>
   </div>
+  <section class="quick-phrases">
+    <button class="phrase-btn" onclick="sendPhrase('Olá, bom dia')">
+      <span class="key-badge">1</span>
+      <span class="phrase-text">Olá, bom dia</span>
+    </button>
+    <button class="phrase-btn" onclick="sendPhrase('Tudo bem com você')">
+      <span class="key-badge">2</span>
+      <span class="phrase-text">Tudo bem com você</span>
+    </button>
+    <button class="phrase-btn" onclick="sendPhrase('Muito obrigado')">
+      <span class="key-badge">3</span>
+      <span class="phrase-text">Muito obrigado</span>
+    </button>
+    <button class="phrase-btn" onclick="sendPhrase('Como você está')">
+      <span class="key-badge">4</span>
+      <span class="phrase-text">Como você está</span>
+    </button>
+    <button class="phrase-btn" onclick="sendPhrase('Bem vindo')">
+      <span class="key-badge">5</span>
+      <span class="phrase-text">Bem vindo</span>
+    </button>
+    <button class="phrase-btn" onclick="sendPhrase('Sim')">
+      <span class="key-badge">6</span>
+      <span class="phrase-text">Sim</span>
+    </button>
+  </section>
 
-  <div class="section-label">Texto manual (Ctrl+Enter envia)</div>
-  <textarea id="input" placeholder="Digite o texto..."></textarea>
-  <div class="controls">
-    <button id="btnSend" onclick="sendInput()">🤟 Traduzir</button>
-    <button id="btnClear" onclick="clearInput()">🗑️</button>
+  <!-- Entrada de Texto Manual -->
+  <div class="section-label">
+    <span>Texto Manual</span>
+    <small style="color: #64748b; font-weight: 400; text-transform: none;">Ctrl+Enter envia</small>
   </div>
+  <section class="input-card">
+    <textarea id="input" placeholder="Digite uma frase para sinalizar..."></textarea>
+    <div class="controls">
+      <button id="btnSend" onclick="sendInput()">Traduzir</button>
+      <button id="btnClear" onclick="clearInput()" title="Limpar campo">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18"></path>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+        </svg>
+      </button>
+    </div>
+  </section>
 
-  <div id="status">Pronto</div>
+  <!-- Seção de Últimas Traduções -->
+  <section class="recent-section">
+    <div class="section-label">
+      <span>Últimas Traduções</span>
+    </div>
+    <div class="recent-list" id="recentList">
+      <div class="recent-empty">Nenhuma tradução recente ainda</div>
+    </div>
+  </section>
+
+  <!-- Status do Rodapé -->
+  <footer id="status">Pronto</footer>
 
   <script>
     const transcript = document.getElementById('transcript')
@@ -238,16 +758,57 @@
     const input = document.getElementById('input')
     const status = document.getElementById('status')
     const btnMic = document.getElementById('btnMic')
+    const btnMicIcon = document.getElementById('btnMicIcon')
+    const btnMicText = document.getElementById('btnMicText')
     const apiKeyInput = document.getElementById('apiKey')
     const keyStatus = document.getElementById('keyStatus')
+    const settingsDrawer = document.getElementById('settingsDrawer')
+    const btnSettings = document.getElementById('btnSettings')
+    const toggleAlwaysTop = document.getElementById('toggleAlwaysTop')
+    const audioMeterWrap = document.getElementById('audioMeterWrap')
+    const meterBarFill = document.getElementById('meterBarFill')
+    const recentList = document.getElementById('recentList')
 
-    // === Chave OpenAI (localStorage) ===
+    // Lista ordenada de frases prontas correspondente aos atalhos 1-6
+    const phraseShortcutList = [
+      'Olá, bom dia',
+      'Tudo bem com você',
+      'Muito obrigado',
+      'Como você está',
+      'Bem vindo',
+      'Sim'
+    ]
+
+    // Histórico de até 3 traduções recentes
+    const recentHistory = []
+
+    // === Configurações & Gaveta Retrátil ===
     const STORAGE_KEY = 'sinalize_openai_key'
+
+    function toggleSettings() {
+      const isCollapsed = settingsDrawer.classList.toggle('collapsed')
+      btnSettings.classList.toggle('active', !isCollapsed)
+    }
+
+    function togglePasswordVisibility() {
+      const eyeBtn = document.querySelector('.toggle-pass-btn')
+      if (apiKeyInput.type === 'password') {
+        apiKeyInput.type = 'text'
+        if (eyeBtn) {
+          eyeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`
+        }
+      } else {
+        apiKeyInput.type = 'password'
+        if (eyeBtn) {
+          eyeBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`
+        }
+      }
+    }
 
     function refreshKeyStatus() {
       const k = apiKeyInput.value.trim()
       if (k.startsWith('sk-')) {
-        keyStatus.textContent = 'Chave OK'
+        keyStatus.textContent = '● Configurada'
         keyStatus.className = 'key-status ok'
       } else {
         keyStatus.textContent = 'Sem chave'
@@ -264,6 +825,17 @@
       refreshKeyStatus()
     })
 
+    // Modo Sempre no Topo (Always on Top)
+    if (toggleAlwaysTop) {
+      toggleAlwaysTop.addEventListener('change', async () => {
+        if (window.sinalize && window.sinalize.toggleAlwaysOnTop) {
+          const newState = await window.sinalize.toggleAlwaysOnTop(toggleAlwaysTop.checked)
+          toggleAlwaysTop.checked = newState
+          setStatus(newState ? 'Avatar fixado no topo' : 'Avatar em modo normal')
+        }
+      })
+    }
+
     function setStatus(msg, cls = '') {
       status.textContent = msg
       status.className = cls
@@ -274,19 +846,69 @@
       micState.className = cls
     }
 
+    // === Atualização e reenvio de Últimas Traduções ===
+    function addRecentTranslation(text) {
+      const clean = text.trim()
+      if (!clean) return
+
+      // Remove duplicada anterior se houver
+      const existingIdx = recentHistory.indexOf(clean)
+      if (existingIdx !== -1) {
+        recentHistory.splice(existingIdx, 1)
+      }
+
+      // Adiciona no início da lista
+      recentHistory.unshift(clean)
+
+      // Mantém no máximo 3 itens
+      if (recentHistory.length > 3) {
+        recentHistory.pop()
+      }
+
+      renderRecentTranslations()
+    }
+
+    function renderRecentTranslations() {
+      if (recentHistory.length === 0) {
+        recentList.innerHTML = '<div class="recent-empty">Nenhuma tradução recente ainda</div>'
+        return
+      }
+
+      recentList.innerHTML = recentHistory
+        .map(
+          (item) => `
+          <div class="recent-item" onclick="send('${item.replace(/'/g, "\\'")}')" title="Clique para reenviar">
+            <span class="recent-item-text">${item}</span>
+            <span class="recent-item-icon">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+            </span>
+          </div>
+        `
+        )
+        .join('')
+    }
+
+    // === Envio de Tradução ===
     function send(text) {
       const clean = (text || '').trim()
       if (!clean) return
+
       window.sinalize.translate(clean)
       setStatus('Traduzindo: "' + clean + '"', 'active')
+      addRecentTranslation(clean)
     }
 
-    function sendPhrase(text) { send(text) }
+    function sendPhrase(text) {
+      send(text)
+    }
 
     function sendInput() {
       const text = input.value
       if (!text.trim()) {
-        setStatus('Digite algo primeiro')
+        setStatus('Digite algo primeiro', 'error')
         return
       }
       send(text)
@@ -298,6 +920,7 @@
       setStatus('Pronto')
     }
 
+    // Atalho Ctrl+Enter no campo de texto
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
@@ -305,7 +928,78 @@
       }
     })
 
-    // === Whisper: gravação e transcrição ===
+    // Atalhos numéricos globais [1-6] para Frases Prontas
+    window.addEventListener('keydown', (e) => {
+      // Ignora se estiver digitando no input ou na apiKey
+      if (document.activeElement === input || document.activeElement === apiKeyInput) {
+        return
+      }
+
+      const num = parseInt(e.key, 10)
+      if (!isNaN(num) && num >= 1 && num <= phraseShortcutList.length) {
+        e.preventDefault()
+        sendPhrase(phraseShortcutList[num - 1])
+      }
+    })
+
+    // === Visualizador de Áudio (Web Audio API) ===
+    let audioContext = null
+    let analyserNode = null
+    let audioSourceNode = null
+    let audioAnimFrame = null
+
+    function startAudioMeter(stream) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext
+        audioContext = new AudioCtx()
+        analyserNode = audioContext.createAnalyser()
+        analyserNode.fftSize = 128
+        analyserNode.smoothingTimeConstant = 0.4
+
+        audioSourceNode = audioContext.createMediaStreamSource(stream)
+        audioSourceNode.connect(analyserNode)
+
+        const freqData = new Uint8Array(analyserNode.frequencyBinCount)
+        audioMeterWrap.classList.add('active')
+
+        function renderMeter() {
+          if (!isRecording) return
+          analyserNode.getByteFrequencyData(freqData)
+          let sum = 0
+          for (let i = 0; i < freqData.length; i++) {
+            sum += freqData[i]
+          }
+          const avg = sum / freqData.length
+          const percent = Math.min(100, Math.round((avg / 100) * 100))
+          meterBarFill.style.width = Math.max(2, percent) + '%'
+
+          audioAnimFrame = requestAnimationFrame(renderMeter)
+        }
+        renderMeter()
+      } catch (err) {
+        console.warn('Web Audio Meter não disponível:', err)
+      }
+    }
+
+    function stopAudioMeter() {
+      if (audioAnimFrame) {
+        cancelAnimationFrame(audioAnimFrame)
+        audioAnimFrame = null
+      }
+      audioMeterWrap.classList.remove('active')
+      meterBarFill.style.width = '0%'
+
+      if (audioSourceNode) {
+        audioSourceNode.disconnect()
+        audioSourceNode = null
+      }
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close()
+        audioContext = null
+      }
+    }
+
+    // === Gravação e Transcrição com Whisper ===
     let mediaRecorder = null
     let audioStream = null
     let audioChunks = []
@@ -314,11 +1008,15 @@
     async function startRecording() {
       const key = apiKeyInput.value.trim()
       if (!key.startsWith('sk-')) {
-        setMicState('⚠️ Cole sua chave OpenAI no campo acima', 'error')
-        setStatus('O reconhecimento de voz (Whisper) precisa de uma chave da OpenAI', 'error')
+        setMicState('Chave OpenAI necessária', 'error')
+        setStatus('Insira sua chave no menu de configurações', 'error')
+
+        // Abre a gaveta de configurações e destaca o campo
+        settingsDrawer.classList.remove('collapsed')
+        btnSettings.classList.add('active')
         apiKeyInput.classList.add('attention')
         apiKeyInput.focus()
-        setTimeout(() => apiKeyInput.classList.remove('attention'), 3000)
+        setTimeout(() => apiKeyInput.classList.remove('attention'), 2500)
         return
       }
 
@@ -331,7 +1029,8 @@
           }
         })
       } catch (e) {
-        setStatus('Microfone indisponível: ' + e.message, 'error')
+        setMicState('Microfone indisponível', 'error')
+        setStatus('Permissão de microfone negada: ' + e.message, 'error')
         return
       }
 
@@ -344,9 +1043,18 @@
       }
 
       mediaRecorder.onstop = async () => {
-        // Libera mic
-        audioStream.getTracks().forEach(t => t.stop())
-        audioStream = null
+        stopAudioMeter()
+
+        // Libera os tracks de áudio
+        if (audioStream) {
+          audioStream.getTracks().forEach((t) => t.stop())
+          audioStream = null
+        }
+
+        // Notifica a janela do avatar que a gravação encerrou
+        if (window.sinalize && window.sinalize.setRecordingStatus) {
+          window.sinalize.setRecordingStatus(false)
+        }
 
         if (audioChunks.length === 0) {
           setMicState('Nenhum áudio capturado')
@@ -361,10 +1069,21 @@
 
       mediaRecorder.start()
       isRecording = true
-      btnMic.textContent = '⏹️ Parar e traduzir'
+
+      // Inicia visualizador de áudio
+      startAudioMeter(audioStream)
+
+      // Atualiza UI para estado gravando
+      btnMicIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>`
+      btnMicText.textContent = 'Parar gravação'
       btnMic.classList.add('recording')
       setMicState('Gravando... fale agora', 'recording')
       setStatus('Aguardando você parar a gravação...')
+
+      // Notifica o avatar para ativar badge "Ao vivo"
+      if (window.sinalize && window.sinalize.setRecordingStatus) {
+        window.sinalize.setRecordingStatus(true)
+      }
     }
 
     function stopRecording() {
@@ -372,7 +1091,8 @@
         mediaRecorder.stop()
       }
       isRecording = false
-      btnMic.textContent = '🎙️ Iniciar gravação'
+      btnMicIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>`
+      btnMicText.textContent = 'Iniciar gravação'
       btnMic.classList.remove('recording')
     }
 
@@ -389,15 +1109,15 @@
       try {
         const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + key },
+          headers: { Authorization: 'Bearer ' + key },
           body: form
         })
 
         if (!res.ok) {
           const errText = await res.text()
           console.error('Whisper API erro:', res.status, errText)
-          setMicState('Erro Whisper: ' + res.status, '')
-          setStatus('Falha na transcrição', 'error')
+          setMicState('Erro Whisper: ' + res.status, 'error')
+          setStatus('Falha na transcrição da OpenAI', 'error')
           return
         }
 
@@ -405,17 +1125,18 @@
         const text = (data.text || '').trim()
 
         if (!text) {
-          setMicState('Whisper não retornou texto')
+          setMicState('Nenhum texto reconhecido')
+          setStatus('Whisper não detectou palavras')
           return
         }
 
         transcript.textContent = text
-        setMicState('Transcrição OK', 'ok')
+        setMicState('Transcrição concluída', 'ok')
         send(text)
       } catch (e) {
         console.error('fetch falhou:', e)
-        setMicState('Erro de rede', '')
-        setStatus('Sem conexão com OpenAI', 'error')
+        setMicState('Erro de conexão', 'error')
+        setStatus('Sem conexão com a OpenAI', 'error')
       } finally {
         btnMic.disabled = false
       }

@@ -59,7 +59,7 @@ O Sinalize automatiza a tradução de português para Libras em situações onde
 git clone <repo>
 cd sinalize
 npm install
-npm start
+npm.cmd start
 ```
 
 Duas janelas abrem:
