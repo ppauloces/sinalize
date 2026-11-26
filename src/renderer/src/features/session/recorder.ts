@@ -1,26 +1,32 @@
-// Gravação contínua com detecção de fala (VAD por nível) e transcrição Whisper por segmento.
+// Captura contínua com detecção de fala (VAD por nível) e transcrição Whisper por segmento.
 // Cada pausa fecha um segmento e abre o próximo sem interromper o microfone.
-import { createStore } from '@/lib/store'
+//
+// Grafo de áudio: microfone → ganho → { analisador do VAD, analisador do medidor, gravação }.
+// Ganho e mudo valem também para o que é transcrito.
+import { createStore } from 'zustand/vanilla'
 import { countWords, nowMs, tel as telemetry } from '@/lib/telemetry'
-import { serverStore } from './server-status'
-import { newSegId, setStatus } from './status'
+import { audioSettingsStore, type AudioSettings } from '../audio/audio-settings'
+import { notify } from '../notify'
+import { guardSegment } from '../transcription/segment-guard'
+import { newSegId } from './segments'
+import { setServerState } from './server-status'
 import { HttpError, currentProvider, hasValidKey, sttStore, transcribe } from './stt'
 
 const MIME = 'audio/webm;codecs=opus'
-const VAD_LEVEL = 18
-const SILENCE_MS = 700
 const MAX_SEGMENT_MS = 12000
 const PARTIAL_MS = 300
 const PARTIAL_TIMEOUT_MS = 3000
-const METER_MS = 50
-export const LISTENING = 'Ouvindo... fale normalmente'
+const VAD_TICK_MS = 50
+// Temperatura da retentativa: reproduz o fallback que o servidor desliga (ver segment-guard.ts).
+const RETRY_TEMPERATURE = 0.4
 
-export type MicTone = 'idle' | 'recording' | 'processing' | 'ok' | 'error'
+export type MicTone = 'idle' | 'live' | 'processing' | 'ok' | 'error'
 
 export interface RecorderState {
   recording: boolean
+  paused: boolean
+  voiceActive: boolean
   micState: { message: string; tone: MicTone }
-  transcript: string
 }
 
 interface Segment {
@@ -30,30 +36,45 @@ interface Segment {
   hadVoice: boolean
   audioMs: number
   speechEnd: number
+  rev: number
 }
 
 export interface RecorderDeps {
   expand(text: string): string
-  onPartial(seg: string, text: string): void
-  onFinal(seg: string, text: string, speechEnd: number): void
+  onVoice(seg: string): void
+  onPartial(seg: string, text: string, rev: number): void
+  onProcessing(seg: string): void
+  onFinal(seg: string, text: string, speechEnd: number, repaired: boolean): void
+  onEmpty(seg: string): void
+  onError(seg: string, message: string): void
 }
+
+type StartResult = 'ok' | 'needs-key' | 'mic-error' | 'busy'
 
 const tel = (type: string, seg: string | null, data?: Record<string, unknown>) => telemetry('control', type, seg, data)
 const isTimeout = (e: unknown) => (e as Error)?.name === 'AbortError' || (e as Error)?.message === 'timeout'
 
+interface AudioGraph {
+  ctx: AudioContext
+  source: MediaStreamAudioSourceNode
+  gain: GainNode
+  vad: AnalyserNode
+  meter: AnalyserNode
+  dest: MediaStreamAudioDestinationNode
+}
+
 export class ContinuousRecorder {
-  readonly store = createStore<RecorderState>({
+  readonly store = createStore<RecorderState>(() => ({
     recording: false,
-    micState: { message: 'Aguardando gravação', tone: 'idle' },
-    transcript: '',
-  })
-  // Nível do microfone em 0–100, separado para só o medidor re-renderizar a 20 Hz.
-  readonly level = createStore(0)
+    paused: false,
+    voiceActive: false,
+    micState: { message: 'Microfone desligado', tone: 'idle' },
+  }))
 
   private stream: MediaStream | null = null
+  private graph: AudioGraph | null = null
   private segment: Segment | null = null
-  private audioContext: AudioContext | null = null
-  private meterTimer: ReturnType<typeof setInterval> | undefined
+  private vadTimer: ReturnType<typeof setInterval> | undefined
   private starting = false
   private segmentStart = 0
   private lastVoiceAt = 0
@@ -63,66 +84,145 @@ export class ContinuousRecorder {
   private partialAbort: AbortController | null = null
   private finalsInFlight = 0
   private transcribeChain: Promise<void> = Promise.resolve()
-  private lastFinalText = ''
 
   constructor(private readonly deps: RecorderDeps) {}
 
   get recording() {
-    return this.store.get().recording
+    return this.store.getState().recording
+  }
+
+  get paused() {
+    return this.store.getState().paused
+  }
+
+  // Analisador do medidor: o mixer lê direto em canvas, sem passar pelo React.
+  get meterAnalyser() {
+    return this.graph?.meter ?? null
   }
 
   private setMic(message: string, tone: MicTone = 'idle') {
-    this.store.set((s) => ({ ...s, micState: { message, tone } }))
+    this.store.setState({ micState: { message, tone } })
   }
 
-  private showTranscript(partial: string | null) {
-    const transcript = partial ? (this.lastFinalText ? this.lastFinalText + '\n' : '') + partial + ' …' : this.lastFinalText
-    this.store.set((s) => ({ ...s, transcript }))
+  private settings(): AudioSettings {
+    return audioSettingsStore.getState()
   }
 
-  async start(): Promise<'ok' | 'needs-key' | 'mic-error' | 'busy'> {
+  private async openStream(deviceId: string) {
+    return navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: deviceId === 'default' ? undefined : { exact: deviceId },
+        channelCount: 1,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    })
+  }
+
+  private buildGraph(stream: MediaStream): AudioGraph {
+    const ctx = new AudioContext()
+    const source = ctx.createMediaStreamSource(stream)
+    const gain = ctx.createGain()
+    // Mesma calibração do VAD da v1 (fftSize 128, suavização 0,4).
+    const vad = ctx.createAnalyser()
+    vad.fftSize = 128
+    vad.smoothingTimeConstant = 0.4
+    const meter = ctx.createAnalyser()
+    meter.fftSize = 2048
+    meter.smoothingTimeConstant = 0
+    const dest = ctx.createMediaStreamDestination()
+    dest.channelCount = 1
+    source.connect(gain)
+    gain.connect(vad)
+    gain.connect(meter)
+    gain.connect(dest)
+    return { ctx, source, gain, vad, meter, dest }
+  }
+
+  applyAudioSettings({ gain, muted }: AudioSettings) {
+    if (this.graph) this.graph.gain.gain.value = muted ? 0 : gain
+  }
+
+  // Troca de microfone sem interromper a sessão: o gravador continua no mesmo destino do grafo.
+  async switchDevice(deviceId: string) {
+    if (!this.graph || !this.stream) return
+    const next = await this.openStream(deviceId)
+    const source = this.graph.ctx.createMediaStreamSource(next)
+    this.graph.source.disconnect()
+    source.connect(this.graph.gain)
+    this.stream.getTracks().forEach((t) => t.stop())
+    this.stream = next
+    this.graph.source = source
+    tel('mic.device', null, { label: next.getAudioTracks()[0]?.label ?? '' })
+  }
+
+  async start(): Promise<StartResult> {
     if (this.starting || this.recording) return 'busy'
     if (!hasValidKey()) {
       this.setMic('Chave OpenAI necessária', 'error')
-      setStatus('Insira sua chave ou escolha o servidor local nas configurações', 'error')
+      notify.error('Chave da OpenAI necessária', 'Informe a chave ou use o servidor local em Configurações › Reconhecimento de voz.')
       return 'needs-key'
     }
     this.starting = true
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } })
+      this.stream = await this.openStream(this.settings().deviceId)
     } catch (e) {
       this.setMic('Microfone indisponível', 'error')
-      setStatus('Permissão de microfone negada: ' + (e as Error).message, 'error')
+      notify.error('Microfone indisponível', (e as Error).message)
       return 'mic-error'
     } finally {
       this.starting = false
     }
-    this.store.set((s) => ({ ...s, recording: true }))
+    this.graph = this.buildGraph(this.stream)
+    this.applyAudioSettings(this.settings())
+    this.store.setState({ recording: true, paused: false })
     this.startSegment()
-    this.startMeter(this.stream)
-    this.setMic(LISTENING, 'recording')
-    setStatus('Cada pausa na fala envia uma frase ao avatar')
+    this.vadTimer = setInterval(() => this.onVadTick(), VAD_TICK_MS)
+    this.setMic('Ouvindo', 'live')
     return 'ok'
+  }
+
+  // Pausa a transcrição sem liberar o microfone (o medidor segue ativo).
+  pause() {
+    if (!this.recording || this.paused) return
+    this.store.setState({ paused: true, voiceActive: false })
+    this.cutSegment('pausa do operador')
+    this.setMic('Captura pausada', 'idle')
+  }
+
+  resume() {
+    if (!this.recording || !this.paused) return
+    this.store.setState({ paused: false })
+    this.startSegment()
+    this.setMic('Ouvindo', 'live')
   }
 
   stop() {
     const stream = this.stream
+    if (!this.recording || !stream) return
     const segment = this.segment
-    if (!this.recording || !stream || !segment) return
-    this.store.set((s) => ({ ...s, recording: false }))
-    this.stopMeter()
+    this.store.setState({ recording: false, paused: false, voiceActive: false })
+    clearInterval(this.vadTimer)
+    const graph = this.graph
     this.stream = null
-    // Libera o microfone só depois do último pedaço de áudio do segmento.
-    segment.rec.addEventListener('stop', () => stream.getTracks().forEach((t) => t.stop()))
-    this.cutSegment('parada')
-    this.setMic('Gravação encerrada')
+    this.graph = null
+    // Libera microfone e áudio só depois do último pedaço gravado do segmento.
+    const release = () => {
+      stream.getTracks().forEach((t) => t.stop())
+      void graph?.ctx.close()
+    }
+    if (segment && segment.rec.state !== 'inactive') {
+      segment.rec.addEventListener('stop', release)
+      this.cutSegment('parada')
+    } else release()
+    this.setMic('Microfone desligado')
   }
 
   private startSegment() {
-    if (!this.stream) return
+    if (!this.graph) return
     const chunks: Blob[] = []
-    const rec = new MediaRecorder(this.stream, { mimeType: MIME })
-    const seg: Segment = { rec, segId: newSegId('mic'), chunks, hadVoice: false, audioMs: 0, speechEnd: 0 }
+    const rec = new MediaRecorder(this.graph.dest.stream, { mimeType: MIME })
+    const seg: Segment = { rec, segId: newSegId('mic'), chunks, hadVoice: false, audioMs: 0, speechEnd: 0, rev: 0 }
     rec.ondataavailable = (e) => {
       if (e.data.size > 0) chunks.push(e.data)
     }
@@ -141,25 +241,36 @@ export class ContinuousRecorder {
   private cutSegment(cause: string) {
     const seg = this.segment
     if (!seg) return
+    this.segment = null
     seg.hadVoice = this.heardVoice
     seg.audioMs = Math.round(nowMs() - this.segmentStart)
     seg.speechEnd = this.lastVoiceAt
     if (this.heardVoice) tel('seg.cut', seg.segId, { cause, lastVoiceAt: this.lastVoiceAt, audioMs: seg.audioMs })
     this.partialAbort?.abort()
-    if (this.recording) this.startSegment()
+    if (this.recording && !this.paused) this.startSegment()
     seg.rec.stop()
   }
 
-  private onAudioLevel(level: number) {
+  private onVadTick() {
+    const graph = this.graph
     const seg = this.segment
-    if (!this.recording || !seg) return
+    if (!graph || !seg || this.paused) return
+    const data = new Uint8Array(graph.vad.frequencyBinCount)
+    graph.vad.getByteFrequencyData(data)
+    const level = data.reduce((n, v) => n + v, 0) / data.length
+    const { vadLevel, silenceMs } = this.settings()
     const now = nowMs()
-    if (level > VAD_LEVEL) {
-      if (!this.heardVoice) tel('voice.on', seg.segId, { level: Math.round(level) })
+    if (level > vadLevel) {
+      if (!this.heardVoice) {
+        tel('voice.on', seg.segId, { level: Math.round(level) })
+        this.deps.onVoice(seg.segId)
+      }
       this.heardVoice = true
       this.lastVoiceAt = now
     }
-    const paused = this.heardVoice && now - this.lastVoiceAt > SILENCE_MS
+    const voiceActive = this.heardVoice && now - this.lastVoiceAt <= silenceMs
+    if (voiceActive !== this.store.getState().voiceActive) this.store.setState({ voiceActive })
+    const paused = this.heardVoice && now - this.lastVoiceAt > silenceMs
     if (paused || now - this.segmentStart > MAX_SEGMENT_MS) this.cutSegment(paused ? 'pausa' : 'limite de duração')
     // Parciais só no servidor local: na OpenAI cada parcial seria uma requisição paga.
     else if (this.heardVoice && !this.partialBusy && !this.finalsInFlight && now - this.lastPartialAt > PARTIAL_MS && !currentProvider().needsKey) {
@@ -171,20 +282,19 @@ export class ContinuousRecorder {
     this.partialBusy = true
     this.lastPartialAt = nowMs()
     const audioMs = Math.round(this.lastPartialAt - this.segmentStart)
-    tel('partial.req', seg.segId, { audioMs })
+    const rev = ++seg.rev
+    tel('partial.req', seg.segId, { audioMs, rev })
     const controller = new AbortController()
     this.partialAbort = controller
     try {
-      const text = await transcribe(new Blob(seg.chunks, { type: MIME }), PARTIAL_TIMEOUT_MS, controller)
+      const raw = await transcribe(new Blob(seg.chunks, { type: MIME }), PARTIAL_TIMEOUT_MS, controller)
       const ms = Math.round(nowMs() - this.lastPartialAt)
-      if (text && seg === this.segment && this.recording) {
-        const expanded = this.deps.expand(text)
-        tel('partial.res', seg.segId, { ms, audioMs, words: countWords(expanded), text: expanded })
-        this.showTranscript(expanded)
-        this.deps.onPartial(seg.segId, expanded)
-      } else {
-        tel('partial.stale', seg.segId, { ms, audioMs })
-      }
+      if (!raw || seg !== this.segment || !this.recording) return tel('partial.stale', seg.segId, { ms, audioMs, rev })
+      const guard = guardSegment(raw, audioMs)
+      if (guard.abnormal) tel('asr.loop', seg.segId, { stage: 'partial', reason: guard.reason, coverage: guard.coverage, raw })
+      const text = this.deps.expand(guard.text)
+      tel('partial.res', seg.segId, { ms, audioMs, rev, words: countWords(text), text })
+      this.deps.onPartial(seg.segId, text, rev)
     } catch (e) {
       tel(controller.signal.aborted ? 'partial.abort' : 'partial.err', seg.segId, { error: String((e as Error)?.message ?? e) })
     } finally {
@@ -193,82 +303,73 @@ export class ContinuousRecorder {
     }
   }
 
+  // Loop detectado no final: uma retentativa com temperatura de fallback; se persistir, usa o texto colapsado.
+  private async recoverLoop(blob: Blob, seg: Segment, raw: string, timeoutMs: number) {
+    const first = guardSegment(raw, seg.audioMs)
+    if (!first.abnormal) return { text: raw, repaired: false }
+    tel('asr.loop', seg.segId, { stage: 'final', reason: first.reason, coverage: first.coverage, raw })
+    try {
+      const retry = await transcribe(blob, timeoutMs, undefined, RETRY_TEMPERATURE)
+      const second = guardSegment(retry, seg.audioMs)
+      if (retry && !second.abnormal) {
+        tel('asr.recovered', seg.segId, { text: retry })
+        return { text: retry, repaired: true }
+      }
+    } catch (e) {
+      tel('asr.retry.err', seg.segId, { error: String((e as Error)?.message ?? e) })
+    }
+    tel('asr.repaired', seg.segId, { text: first.text })
+    return { text: first.text, repaired: true }
+  }
+
   private async transcribeAndSend(blob: Blob, seg: Segment) {
     const p = currentProvider()
     const local = !p.needsKey
-    this.setMic('Transcrevendo...', 'processing')
+    this.setMic('Transcrevendo', 'processing')
+    this.deps.onProcessing(seg.segId)
     const t0 = nowMs()
-    tel('final.req', seg.segId, { audioMs: seg.audioMs, provider: sttStore.get().provider })
+    tel('final.req', seg.segId, { audioMs: seg.audioMs, provider: sttStore.getState().provider })
     this.finalsInFlight++
+    const listening = () => this.setMic(this.recording ? (this.paused ? 'Captura pausada' : 'Ouvindo') : 'Microfone desligado', this.recording && !this.paused ? 'live' : 'idle')
     try {
-      let text: string
+      let raw: string
       try {
-        text = await transcribe(blob, p.finalTimeoutMs)
+        raw = await transcribe(blob, p.finalTimeoutMs)
       } catch (e) {
         const status = e instanceof HttpError ? e.status : isTimeout(e) ? 'timeout' : 'rede'
         tel('final.err', seg.segId, { status, ms: Math.round(nowMs() - t0) })
         if (!(e instanceof HttpError)) throw e
         console.error('Transcrição erro:', e.status, e.body)
         this.setMic('Erro na transcrição: ' + e.status, 'error')
-        setStatus(local ? 'Falha no servidor local' : 'Falha na transcrição da OpenAI', 'error')
+        this.deps.onError(seg.segId, `HTTP ${e.status}`)
+        notify.error(local ? 'Falha no servidor local de transcrição' : 'Falha na transcrição da OpenAI', `HTTP ${e.status}`)
         return
       }
 
+      if (local) setServerState('online')
+      const { text, repaired } = raw ? await this.recoverLoop(blob, seg, raw, p.finalTimeoutMs) : { text: '', repaired: false }
       const ms = Math.round(nowMs() - t0)
-      if (local) serverStore.set('online')
       if (!text) {
         tel('final.empty', seg.segId, { ms, audioMs: seg.audioMs })
-        this.setMic(this.recording ? LISTENING : 'Nenhum texto reconhecido', this.recording ? 'recording' : 'idle')
-        return
+        this.deps.onEmpty(seg.segId)
+        return listening()
       }
-
-      tel('final.res', seg.segId, { ms, audioMs: seg.audioMs, text, words: countWords(text) })
-      this.lastFinalText = text
-      this.showTranscript(null)
-      this.setMic(this.recording ? LISTENING : 'Transcrição concluída', this.recording ? 'recording' : 'ok')
-      this.deps.onFinal(seg.segId, text, seg.speechEnd)
+      tel('final.res', seg.segId, { ms, audioMs: seg.audioMs, text, words: countWords(text), repaired })
+      listening()
+      this.deps.onFinal(seg.segId, text, seg.speechEnd, repaired)
     } catch (e) {
       console.error('fetch falhou:', e)
       const lost = isTimeout(e) ? 'Transcrição demorou demais (frase perdida)' : null
+      this.deps.onError(seg.segId, lost ?? 'Sem conexão')
       if (local) {
-        serverStore.set('offline')
+        setServerState('offline')
         this.setMic(lost ?? 'Servidor local indisponível', 'error')
-        setStatus('Pronto')
       } else {
         this.setMic(lost ?? 'Erro de conexão', 'error')
-        setStatus('Sem conexão com a OpenAI', 'error')
+        notify.error('Sem conexão com a OpenAI')
       }
     } finally {
       this.finalsInFlight--
     }
-  }
-
-  private startMeter(stream: MediaStream) {
-    try {
-      const ctx = new AudioContext()
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 128
-      analyser.smoothingTimeConstant = 0.4
-      ctx.createMediaStreamSource(stream).connect(analyser)
-      const data = new Uint8Array(analyser.frequencyBinCount)
-      this.audioContext = ctx
-      this.meterTimer = setInterval(() => {
-        analyser.getByteFrequencyData(data)
-        const avg = data.reduce((n, v) => n + v, 0) / data.length
-        this.level.set(Math.max(2, Math.min(100, Math.round(avg))))
-        this.onAudioLevel(avg)
-      }, METER_MS)
-    } catch (err) {
-      // Sem medidor não há VAD: todo segmento é tratado como fala.
-      console.warn('Web Audio indisponível:', err)
-      this.heardVoice = true
-    }
-  }
-
-  private stopMeter() {
-    clearInterval(this.meterTimer)
-    this.level.set(0)
-    if (this.audioContext && this.audioContext.state !== 'closed') void this.audioContext.close()
-    this.audioContext = null
   }
 }

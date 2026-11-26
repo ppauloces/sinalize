@@ -1,5 +1,6 @@
 // Glossário/léxico local: substitui siglas e termos antes de qualquer texto chegar ao VLibras.
-import { createStore } from '@/lib/store'
+import { createStore } from 'zustand/vanilla'
+import { z } from 'zod'
 import { readJson, write } from '@/lib/storage'
 
 export interface GlossaryEntry {
@@ -14,6 +15,7 @@ const DEFAULTS: GlossaryEntry[] = [
   { id: 'def-pi', term: 'PI', expansion: 'Projeto Interdisciplinar' },
   { id: 'def-ads', term: 'ADS', expansion: 'Análise e Desenvolvimento de Sistemas' },
 ]
+const entrySchema = z.object({ id: z.string(), term: z.string().min(1).max(80), expansion: z.string().min(1).max(300) })
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -29,26 +31,26 @@ export function applyGlossary(text: string, entries: GlossaryEntry[]) {
 
 function load(): GlossaryEntry[] {
   const saved = readJson<unknown>(KEY, null)
-  if (Array.isArray(saved)) return saved.filter((e): e is GlossaryEntry => typeof e?.term === 'string' && typeof e?.expansion === 'string')
+  if (Array.isArray(saved)) return saved.flatMap((e) => (entrySchema.safeParse(e).success ? [e as GlossaryEntry] : []))
   write(KEY, JSON.stringify(DEFAULTS))
   return [...DEFAULTS]
 }
 
-export const glossaryStore = createStore<GlossaryEntry[]>(load())
-glossaryStore.subscribe(() => write(KEY, JSON.stringify(glossaryStore.get())))
+export const glossaryStore = createStore(() => ({ entries: load() }))
+glossaryStore.subscribe(({ entries }) => write(KEY, JSON.stringify(entries)))
 
-export const expand = (text: string) => applyGlossary(text, glossaryStore.get())
+export const expand = (text: string) => applyGlossary(text, glossaryStore.getState().entries)
 
 // Atualiza se o termo já existir (sem diferenciar maiúsculas), senão adiciona no topo.
 export function upsertTerm(term: string, expansion: string): 'added' | 'updated' {
-  const entries = glossaryStore.get()
+  const { entries } = glossaryStore.getState()
   const idx = entries.findIndex((e) => e.term.toLowerCase() === term.toLowerCase())
   if (idx !== -1) {
-    glossaryStore.set(entries.map((e, i) => (i === idx ? { ...e, term, expansion } : e)))
+    glossaryStore.setState({ entries: entries.map((e, i) => (i === idx ? { ...e, term, expansion } : e)) })
     return 'updated'
   }
-  glossaryStore.set([{ id: 'g-' + Date.now().toString(36), term, expansion }, ...entries])
+  glossaryStore.setState({ entries: [{ id: 'g-' + Date.now().toString(36), term, expansion }, ...entries] })
   return 'added'
 }
 
-export const removeTerm = (id: string) => glossaryStore.set(glossaryStore.get().filter((e) => e.id !== id))
+export const removeTerm = (id: string) => glossaryStore.setState((s) => ({ entries: s.entries.filter((e) => e.id !== id) }))

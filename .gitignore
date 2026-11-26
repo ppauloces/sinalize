@@ -2,3 +2,5 @@ node_modules/
 *.log
 bench/resultados/
 out/
+test-results/
+playwright-report/

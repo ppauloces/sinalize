@@ -5,7 +5,7 @@
 //
 // Não usa microfone nem ASR. O tradutor remoto só é chamado na PREPARAÇÃO (texto → glosa);
 // durante a medição o avatar recebe as glosas prontas via window.vlibras.play(glosa).
-// Carrega o próprio renderer/avatar.html, para medir exatamente o player que o app usa.
+// Carrega o próprio player do app (src/renderer/public/vlibras-stage.html), para medir exatamente o Unity que o Studio usa.
 //
 // Mede por reprodução: palavras PT, tokens da glosa, tokens fora do dicionário (datilologia),
 // letras soletradas, tempo até 'playing', duração da animação (status do player, amostrado por
@@ -23,6 +23,20 @@ app.setPath('userData', path.join(app.getPath('temp'), 'sinalize-avatar-bench'))
 
 const now = () => performance.timeOrigin + performance.now()
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+const STAGE_PAGE = path.join(__dirname, '..', 'src', 'renderer', 'public', 'vlibras-stage.html')
+const TRANSLATE_URL = 'https://traducao2.vlibras.gov.br/translate'
+
+// Mesmo serviço e tratamento de resposta que o Studio usa (src/main/index.ts).
+async function translate(text) {
+  const res = await fetch(TRANSLATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+  const body = await res.text()
+  try {
+    return JSON.parse(body).traducao || body
+  } catch {
+    return body
+  }
+}
+
 const SIGNS_URL = 'https://dicionario2.vlibras.gov.br/signs?version=2018.3.1'
 const SPEEDS = [1, 1.5, 2, 2.5]
 const REPS = 2
@@ -239,7 +253,7 @@ async function main() {
   })
   const tNav = now()
   const netBeforeLoad = netLog.length
-  await win.loadFile(path.join(__dirname, '..', 'renderer', 'avatar.html'))
+  await win.loadFile(STAGE_PAGE)
   const readyMs = await waitPlayer(win)
   const loadReqs = netLog.slice(netBeforeLoad)
   results.load.cold = {
@@ -254,7 +268,7 @@ async function main() {
   // Preparação: glosas via tradutor (fora da medição)
   console.log('Preparação: traduzindo cenários…')
   for (const s of SCENARIOS) {
-    if (s.kind === 'pt') s.gloss = await evalPage(win, `window.vlibras.translate(${JSON.stringify(s.text)})`)
+    if (s.kind === 'pt') s.gloss = await translate(s.text)
     s.ptWords = s.kind === 'pt' ? (s.text.match(/\S+/g) || []).length : null
     console.log(`  ${s.id}: ${s.gloss}`)
   }
@@ -350,7 +364,7 @@ async function experiments() {
     width: 460, height: 680, show: true, title: 'Sinalize — Experimentos do player',
     webPreferences: { contextIsolation: false, nodeIntegration: true, webSecurity: false, backgroundThrottling: false },
   })
-  await win.loadFile(path.join(__dirname, '..', 'renderer', 'avatar.html'))
+  await win.loadFile(STAGE_PAGE)
   await waitPlayer(win)
   await evalPage(win, RECORDER)
   const A = 'CASA ESCOLA'

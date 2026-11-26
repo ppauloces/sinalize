@@ -2,7 +2,7 @@ import { useEffect, useReducer, useState, type CSSProperties } from 'react'
 import { captionText, emptyCaption, reduceCaption } from '@/features/captions/overlay-caption'
 import { cn } from '@/lib/utils'
 import { useDragResize } from '../use-drag-resize'
-import { useOverlayState } from '../use-overlay-state'
+import { useOutputState } from '../use-output-state'
 
 const SAMPLE = 'Exemplo de legenda do Sinalize. Ajuste posição, largura e estilo.'
 
@@ -14,7 +14,7 @@ function hexToRgba(hex: string, alpha: number) {
 function WidthHandle({ side }: { side: 'left' | 'right' }) {
   const dir = side === 'left' ? -1 : 1
   // Largura simétrica: a legenda continua centrada enquanto a alça é arrastada.
-  const onPointerDown = useDragResize((dx, _dy, start) => void window.sinalize.overlay.command('resizeCaption', Math.round(start.width + 2 * dir * dx)))
+  const onPointerDown = useDragResize((dx, _dy, start) => void window.sinalize.output.command('resizeCaption', Math.round(start.width + 2 * dir * dx)))
   return (
     <div
       title="Largura"
@@ -25,7 +25,7 @@ function WidthHandle({ side }: { side: 'left' | 'right' }) {
 }
 
 export function CaptionOverlay() {
-  const state = useOverlayState()
+  const state = useOutputState()
   const [model, dispatch] = useReducer(reduceCaption, emptyCaption)
   // Texto que já cumpriu o tempo de permanência (fica oculto até mudar).
   const [expired, setExpired] = useState<string | null>(null)
@@ -49,7 +49,7 @@ export function CaptionOverlay() {
   if (!caption) return null
   const pad = Math.round(caption.fontSize * 0.35)
   const style: CSSProperties = {
-    fontFamily: `'${caption.fontFamily}', 'Segoe UI', system-ui, sans-serif`,
+    fontFamily: `'${caption.fontFamily}', '${caption.fontFamily} Variable', 'Segoe UI', system-ui, sans-serif`,
     fontSize: caption.fontSize,
     fontWeight: caption.fontWeight,
     lineHeight: caption.lineHeight,

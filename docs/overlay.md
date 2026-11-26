@@ -80,14 +80,14 @@ Microfone → transcrição (Whisper) → Studio (src/renderer/src/apps/studio)
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `src/main/overlay/overlay-manager.ts` | `OverlayManager`: janelas, modo edição/apresentação, monitores, atalhos globais, IPC validado, persistência, recuperação de crash |
-| `src/main/overlay/overlay-settings.ts` | padrões, presets, validação/merge das configurações, tamanhos derivados |
-| `src/main/overlay/display.ts` | geometria multi-monitor (ancoragens, limites, monitor desconectado) |
-| `src/shared/overlay.ts`, `src/shared/api.ts` | contratos tipados (configurações, comandos, eventos, canais IPC) |
+| `src/main/services/output-manager.ts` | `OutputManager` (Overlay e Telão): janelas, modo edição/apresentação, monitores, atalhos globais, IPC validado, persistência, recuperação de crash |
+| `src/main/services/output-settings.ts` | padrões, presets, validação/merge das configurações, tamanhos derivados |
+| `src/main/services/display.ts` | geometria multi-monitor (ancoragens, limites, monitor desconectado) |
+| `src/shared/output.ts`, `src/shared/ipc.ts`, `src/shared/schemas.ts` | contratos tipados (configurações, comandos, eventos, canais IPC) |
 | `src/renderer/public/vlibras-stage.html` | player VLibras sem o widget (usado no Studio e no overlay) |
 | `src/renderer/src/apps/avatar-overlay/` | janela do avatar: ponte do motor, barra de ferramentas, alça de redimensionamento |
 | `src/renderer/src/apps/caption-overlay/` | janela de legendas: três origens de texto, estilo, permanência |
-| `src/renderer/src/features/overlay/` | aba **Overlay** do Studio e estado espelhado do main |
+| `src/renderer/src/features/output/` | aba **Overlay** do Studio e estado espelhado do main |
 | `src/renderer/src/features/session/session.ts` | sessão única: roteamento do motor e espelhamento da legenda |
 | `src/preload/index.ts` | API `window.sinalize.overlay / player / caption` |
 
@@ -95,13 +95,13 @@ Microfone → transcrição (Whisper) → Studio (src/renderer/src/apps/studio)
 
 | Canal | Origem → destino | Conteúdo |
 |---|---|---|
-| `overlay:get` / `overlay:update` / `overlay:command` | Studio (e overlays, só `command`) → main | estado completo; patch validado; comando de uma lista fechada com tipo do argumento |
-| `overlay:state` | main → todas as janelas | configurações, monitores, bounds calculados, falhas de atalho |
+| `output:get` / `output:update` / `output:command` | Studio (e overlays, só `command`) → main | estado completo; patch validado; comando de uma lista fechada com tipo do argumento |
+| `output:state` | main → todas as janelas | configurações, monitores, bounds calculados, falhas de atalho |
 | `player:cmd` | Studio → main → avatar | `play`, `setSpeed`, `setAvatar`, `stop` |
 | `player:status` | avatar → main → Studio | `{ status, speed }` |
 | `caption:event` | Studio → main → legendas | `final`, `partial`, `state` (texto limitado a 2000 caracteres) |
 
-Configurações persistem em `%APPDATA%\sinalize\overlay.json` (escrita atômica).
+Configurações persistem em `%APPDATA%\sinalize\output.json` (escrita atômica; o `overlay.json` da v1 é lido como fallback).
 
 ## 3. Validação realizada
 

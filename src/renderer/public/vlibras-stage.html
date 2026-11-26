@@ -67,6 +67,13 @@
       stop() {
         if (status) send('PlayerManager', 'stopAll')
       },
+      // Mesmos comandos do botão de pausa do widget oficial (setPauseState 1/0).
+      pause() {
+        if (status === 'playing') send('PlayerManager', 'setPauseState', 1)
+      },
+      resume() {
+        if (status === 'paused') send('PlayerManager', 'setPauseState', 0)
+      },
     }
 
     window.addEventListener('message', (e) => {

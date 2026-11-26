@@ -17,6 +17,7 @@ export default defineConfig({
           studio: page('studio'),
           'avatar-overlay': page('avatar-overlay'),
           'caption-overlay': page('caption-overlay'),
+          presentation: page('presentation'),
         },
       },
     },

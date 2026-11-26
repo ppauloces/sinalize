@@ -1,5 +1,5 @@
 // Modelo da janela de legendas flutuantes, alimentado pelos eventos espelhados do Studio.
-import type { CaptionEvent, CaptionLineState, CaptionSource } from '../../../../shared/overlay'
+import type { CaptionEvent, CaptionLineState, CaptionSource } from '../../../../shared/output'
 
 const MAX_FINALS = 20
 

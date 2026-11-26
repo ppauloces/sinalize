@@ -1,42 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Captions, CaptionsOff, EyeOff, Lock, Monitor, Move, MoveDiagonal2, UserCog, X } from 'lucide-react'
-import { AVATAR_RATIO, PLAYER_COMMAND_TYPES, type OverlayState } from '../../../../shared/overlay'
-import type { Player } from '@/features/avatar/player'
-import { useOverlayState } from '../use-overlay-state'
+import { AVATAR_RATIO, type OutputState } from '../../../../shared/output'
+import { usePlayerBridge } from '../player-bridge'
+import { useOutputState } from '../use-output-state'
 import { useDragResize } from '../use-drag-resize'
 
-const command = window.sinalize.overlay.command
-
-// Ponte do motor: a fila do Studio comanda; o estado do Unity volta a cada mudança.
-function usePlayerBridge(frame: RefObject<HTMLIFrameElement | null>) {
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    const player = () => frame.current?.contentWindow?.vlibras as Player | undefined
-    const offCmd = window.sinalize.player.onCmd((method, arg) => {
-      const p = player()
-      if (!p || !Object.hasOwn(PLAYER_COMMAND_TYPES, method)) return
-      if (method === 'play') p.play(arg as string)
-      else if (method === 'setSpeed') p.setSpeed(arg as number)
-      else if (method === 'setAvatar') p.setAvatar(arg as string)
-    })
-    let last = ''
-    const timer = setInterval(() => {
-      const p = player()
-      const state = { status: p?.status ?? null, speed: p?.speed ?? null }
-      setLoading(state.status === null)
-      const key = `${state.status}|${state.speed}`
-      if (key !== last) {
-        last = key
-        window.sinalize.player.status(state)
-      }
-    }, 50)
-    return () => {
-      offCmd()
-      clearInterval(timer)
-    }
-  }, [frame])
-  return loading
-}
+const command = window.sinalize.output.command
 
 function Tool({ title, onClick, children, danger, drag, onPointerDown }: { title: string; onClick?: () => void; children: ReactNode; danger?: boolean; drag?: boolean; onPointerDown?: (e: ReactPointerEvent<HTMLElement>) => void }) {
   return (
@@ -56,7 +25,7 @@ function Tool({ title, onClick, children, danger, drag, onPointerDown }: { title
   )
 }
 
-function Toolbar({ state, onResize }: { state: OverlayState; onResize: (e: ReactPointerEvent<HTMLElement>) => void }) {
+function Toolbar({ state, onResize }: { state: OutputState; onResize: (e: ReactPointerEvent<HTMLElement>) => void }) {
   const captionHidden = !state.settings.caption.visible
   return (
     <nav aria-label="Controles do overlay" className="absolute inset-x-1.5 top-1.5 flex flex-wrap justify-center gap-px rounded-[9px] bg-slate-900/88 p-0.5 shadow-lg [-webkit-app-region:no-drag]">
@@ -78,13 +47,13 @@ function Toolbar({ state, onResize }: { state: OverlayState; onResize: (e: React
       <Tool title="Configurar legendas" onClick={() => void command('focusStudio', 'caption')}>
         <Captions />
       </Tool>
-      <Tool title="Ocultar avatar (a sinalização continua no Studio)" onClick={() => void command('toggleAvatar')}>
+      <Tool title="Ocultar avatar (a sinalização volta para o Studio)" onClick={() => void command('toggleAvatar')}>
         <EyeOff />
       </Tool>
       <Tool title={captionHidden ? 'Mostrar legendas' : 'Ocultar legendas'} onClick={() => void command('toggleCaption')}>
         {captionHidden ? <Captions /> : <CaptionsOff />}
       </Tool>
-      <Tool title="Fechar overlay" danger onClick={() => void command('close')}>
+      <Tool title="Fechar overlay" danger onClick={() => void command('closeOverlay')}>
         <X />
       </Tool>
     </nav>
@@ -94,14 +63,14 @@ function Toolbar({ state, onResize }: { state: OverlayState; onResize: (e: React
 export function AvatarOverlay() {
   const frame = useRef<HTMLIFrameElement>(null)
   const [src] = useState(() => `vlibras-stage.html?avatar=${encodeURIComponent(new URLSearchParams(location.search).get('avatar') ?? 'icaro')}`)
-  const state = useOverlayState()
+  const state = useOutputState()
   const loading = usePlayerBridge(frame)
   // Redimensionamento programático (janelas transparentes no Windows não redimensionam nativamente).
   const onResize = useDragResize((dx, dy, start) => void command('resizeAvatar', Math.round(start.width + (dx + dy / AVATAR_RATIO) / 2)))
 
   return (
     <>
-      <iframe ref={frame} src={src} title="Avatar VLibras" tabIndex={-1} className="absolute inset-0 size-full border-0 bg-transparent" />
+      <iframe ref={frame} src={src} title="Avatar VLibras" tabIndex={-1} className="absolute inset-0 size-full border-0 bg-transparent [color-scheme:normal]" />
       {/* Ferramentas só no modo edição: nada decorativo fica sobre os slides. */}
       {state?.editing && (
         <div className="font-sans">

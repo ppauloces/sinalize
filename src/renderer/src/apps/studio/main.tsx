@@ -2,16 +2,18 @@ import '@/styles/globals.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { App } from './App'
-import { applyTheme, savedTheme } from './theme'
+import { syncTheme } from '@/features/appearance/appearance-store'
+import { watchSystem } from '@/features/diagnostics/system-store'
+import { StudioApp } from './StudioApp'
 
-// Aplica o tema antes do primeiro render para não piscar.
-applyTheme(savedTheme())
+// Tema aplicado antes do primeiro render para não piscar.
+syncTheme()
+watchSystem()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <TooltipProvider delayDuration={400}>
-      <App />
+    <TooltipProvider delayDuration={500}>
+      <StudioApp />
     </TooltipProvider>
   </StrictMode>,
 )

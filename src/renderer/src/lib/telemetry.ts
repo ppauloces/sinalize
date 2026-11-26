@@ -1,4 +1,4 @@
-import type { TelemetryEvent } from '../../../shared/api'
+import type { TelemetryEvent } from '../../../shared/ipc'
 
 // Mesmo relógio do processo principal e das demais janelas (ver src/main/telemetry.ts).
 export const nowMs = () => performance.timeOrigin + performance.now()

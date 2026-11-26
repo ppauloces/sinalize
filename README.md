@@ -44,58 +44,36 @@ O Sinalize automatiza a tradução de português para Libras em situações onde
 
 ## 🛠️ Stack
 
-| Camada | Tecnologia |
-|---|---|
-| Desktop | Electron 34 + electron-vite |
-| UI | React 19, TypeScript (strict), Tailwind CSS 4, shadcn/ui, Lucide |
-| Reconhecimento de voz | Whisper: OpenAI (`gpt-4o-mini-transcribe`) ou servidor local speaches |
-| Tradução | Serviço de tradução do VLibras (português → glosa) |
-| Avatar 3D | Player Unity WebGL oficial do VLibras, sem o widget (fundo transparente) |
-| Comunicação entre janelas | IPC tipado do Electron (`src/shared`) |
-| Qualidade | Vitest, ESLint (typescript-eslint + react-hooks) |
+Electron 34 + electron-vite, React 19, TypeScript strict, Tailwind CSS 4, shadcn/ui, Lucide, Zustand,
+React Resizable Panels, TanStack Virtual, Zod, cmdk, Sonner e Motion. Testes com Vitest, Playwright
+e axe-core. Reconhecimento de voz com Whisper (OpenAI ou servidor local speaches) e avatar 3D pelo
+player Unity oficial do VLibras. Detalhes e decisões em [docs/arquitetura-v2.md](docs/arquitetura-v2.md).
 
 ## 🚀 Como rodar
 
 ```bash
-git clone <repo>
-cd sinalize
 npm install
 npm run dev     # desenvolvimento com recarga automática
 npm start       # compila e abre a versão de produção
-```
-
-```bash
 npm run check   # typecheck + lint + testes + build
+npm run e2e     # testes E2E no app real (perfil isolado) e capturas em docs/screenshots
 ```
 
-A janela do **Studio** reúne o palco do avatar, a legenda e o painel de controle. Modos de exibição:
-- **Studio** — operação completa (voz, texto, frases prontas, glossário)
-- **Telão** — palco e legenda ampliados para projeção
+O **Sinalize Studio** é uma estação de operação no estilo de software de transmissão: monitor de
+sinalização no centro, docks redimensionáveis (controle de sessão, mixer de áudio, fila de
+sinalização, tradução manual e transcrição ao vivo), módulos na barra lateral (Áudio, Transcrições,
+Glossário, Histórico, Overlay e Telão, Diagnóstico), menus, paleta de comandos (Ctrl+K) e barra de
+status com métricas reais. Saídas do avatar:
+
+- **Studio** — monitor de sinalização da própria estação
+- **Telão** — janela de projeção só com avatar, legenda e fundo
 - **Overlay** — avatar e legendas flutuando sobre PowerPoint, navegador, PDF ou reuniões
-  (aba *Overlay* ou `Ctrl+Alt+Shift+O`; detalhes, validação e limitações em [docs/overlay.md](docs/overlay.md))
+  ([docs/overlay.md](docs/overlay.md))
 
 ## 📁 Estrutura
 
-```
-src/
-├── main/                    # Processo principal
-│   ├── index.ts             # Janela do Studio, protocolo app://, tradução VLibras, diagnóstico
-│   ├── telemetry.ts         # Métricas por segmento (painel Ctrl+Shift+D)
-│   └── overlay/             # Modo Overlay: OverlayManager, configurações validadas, geometria multi-monitor
-├── preload/index.ts         # API window.sinalize (contextBridge)
-├── shared/                  # Contratos tipados de IPC e do overlay
-└── renderer/
-    ├── studio.html, avatar-overlay.html, caption-overlay.html
-    ├── public/              # vlibras-stage.html (player Unity) e diag.html
-    └── src/
-        ├── apps/            # Entradas React: studio, avatar-overlay, caption-overlay
-        ├── features/        # avatar (fila, player), captions, glossary, session (gravação, STT), overlay
-        ├── components/ui/   # shadcn/ui
-        └── lib/             # store observável, telemetria, utilitários
-```
-
-A lógica de tempo real (gravação com VAD, fila de sinalização, legenda) fica em classes TypeScript fora
-do React, observadas com `useSyncExternalStore`: os timers de 50 ms não disparam renderizações.
+Ver [docs/arquitetura-v2.md](docs/arquitetura-v2.md#estrutura). Correção do loop de transcrição em
+[docs/transcricao-loop.md](docs/transcricao-loop.md).
 
 ## ⚠️ Limitações conhecidas
 

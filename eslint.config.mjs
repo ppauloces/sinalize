@@ -4,8 +4,8 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import globals from 'globals'
 
 export default tseslint.config(
-  // renderer/ e bench/ são legados fora do build (bench mede o widget antigo).
-  { ignores: ['out/', 'node_modules/', 'renderer/', 'bench/', 'src/renderer/public/'] },
+  // bench/ é um script CommonJS de medição fora do build; public/ contém páginas estáticas.
+  { ignores: ['out/', 'node_modules/', 'bench/', 'src/renderer/public/', 'test-results/', 'playwright-report/'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

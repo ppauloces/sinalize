@@ -3,7 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AvatarOverlay } from './AvatarOverlay'
 
-document.documentElement.classList.add('overlay')
+document.documentElement.classList.add('output')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
