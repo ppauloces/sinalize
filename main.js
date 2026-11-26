@@ -23,11 +23,10 @@ protocol.registerSchemesAsPrivileged([
   }
 ])
 
-let controlWindow = null
-let avatarWindow = null
+let mainWindow = null
 
 async function createWindows() {
-  // Oculta a barra de menu padrão do sistema (File, Edit, View...)
+  // Oculta a barra de menu padrão do sistema (File, Edit, View, Window, Help)
   Menu.setApplicationMenu(null)
 
   // Registra o handler do protocolo 'app://' com pathToFileURL
@@ -35,9 +34,9 @@ async function createWindows() {
     const url = new URL(request.url)
     let filePath = path.join(__dirname, 'renderer', url.pathname)
 
-    // Fallback para control.html na raiz
+    // Fallback para a interface principal unificada na raiz
     if (url.pathname === '/' || url.pathname === '') {
-      filePath = path.join(__dirname, 'renderer', 'control.html')
+      filePath = path.join(__dirname, 'renderer', 'index.html')
     }
 
     return net.fetch(pathToFileURL(filePath).toString())
@@ -51,47 +50,12 @@ async function createWindows() {
     return true
   })
 
-  // Dimensões definidas para exibição lado a lado refinada
-  const avatarWidth = 460
-  const controlWidth = 420
-  const windowHeight = 680
-  const gap = 16
-
-  // Calcula posicionamento automático lado a lado centralizado na tela
-  const primaryDisplay = screen.getPrimaryDisplay()
-  const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea
-
-  const totalWidth = avatarWidth + controlWidth + gap
-  const startX = screenX + Math.max(0, Math.round((screenWidth - totalWidth) / 2))
-  const startY = screenY + Math.max(0, Math.round((screenHeight - windowHeight) / 2))
-
-  // 1. Janela do Avatar (Esquerda)
-  avatarWindow = new BrowserWindow({
-    x: startX,
-    y: startY,
-    width: avatarWidth,
-    height: windowHeight,
-    minWidth: 380,
-    minHeight: 520,
-    title: 'Sinalize — Avatar',
-    autoHideMenuBar: true,
-    backgroundColor: '#0b0d14',
-    webPreferences: {
-      contextIsolation: false,
-      webSecurity: false,
-      allowRunningInsecureContent: true,
-      nodeIntegration: true,
-      backgroundThrottling: false // a fila e a medição seguem com a janela oculta/minimizada
-    }
-  })
-
-  // Remove CSP para permitir carregamento de scripts externos do VLibras
-  avatarWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+  // Remove CSP para permitir scripts externos do VLibras e libera CORS para servidor local (speaches)
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const responseHeaders = { ...details.responseHeaders }
     delete responseHeaders['Content-Security-Policy']
     delete responseHeaders['content-security-policy']
 
-    // Servidor de transcrição local (speaches) não envia CORS: libera para a janela de controle
     if (/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(details.url)) {
       for (const h of Object.keys(responseHeaders)) {
         if (h.toLowerCase() === 'access-control-allow-origin') delete responseHeaders[h]
@@ -101,73 +65,49 @@ async function createWindows() {
     callback({ responseHeaders })
   })
 
-  avatarWindow.loadFile('renderer/avatar.html')
+  // Dimensões da janela principal unificada (1180x740 centralizada, adaptada a telas menores)
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea
 
-  // 2. Janela de Controle (Direita)
-  controlWindow = new BrowserWindow({
-    x: startX + avatarWidth + gap,
+  const winWidth = Math.min(1180, Math.max(920, screenWidth - 32))
+  const winHeight = Math.min(740, Math.max(600, screenHeight - 32))
+  const startX = screenX + Math.max(0, Math.round((screenWidth - winWidth) / 2))
+  const startY = screenY + Math.max(0, Math.round((screenHeight - winHeight) / 2))
+
+  // Janela Principal Unificada (Palco do Avatar + Painel de Controle)
+  mainWindow = new BrowserWindow({
+    x: startX,
     y: startY,
-    width: controlWidth,
-    height: windowHeight,
-    minWidth: 380,
-    minHeight: 580,
-    title: 'Sinalize — Controle',
+    width: winWidth,
+    height: winHeight,
+    minWidth: 920,
+    minHeight: 600,
+    title: 'Sinalize — Tradutor de Libras em Tempo Real',
     resizable: true,
     autoHideMenuBar: true,
     backgroundColor: '#F8FAFC',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      backgroundThrottling: false // gravação contínua segue com a janela minimizada
+      webSecurity: false,
+      allowRunningInsecureContent: true,
+      backgroundThrottling: false // gravação contínua e fila do avatar seguem com a janela minimizada
     }
   })
 
-  // Carrega via protocolo seguro 'app://'
-  controlWindow.loadURL('app://sinalize/control.html')
+  // Garante ocultação da barra de menu nativa mesmo pressionando Alt
+  mainWindow.setMenuBarVisibility(false)
 
-  // Fecha ambas as janelas caso uma seja fechada
-  avatarWindow.on('closed', () => {
-    avatarWindow = null
-    if (controlWindow && !controlWindow.isDestroyed()) {
-      controlWindow.close()
-    }
-  })
+  // Carrega a interface unificada via protocolo seguro 'app://'
+  mainWindow.loadURL('app://sinalize/index.html')
 
-  controlWindow.on('closed', () => {
-    controlWindow = null
-    if (avatarWindow && !avatarWindow.isDestroyed()) {
-      avatarWindow.close()
-    }
+  mainWindow.on('closed', () => {
+    mainWindow = null
     if (diagWindow && !diagWindow.isDestroyed()) diagWindow.close()
   })
 }
 
-// === Comunicação IPC ===
-
-// Envio de texto para o avatar
-ipcMain.on('translate', (event, text, meta) => {
-  if (avatarWindow && !avatarWindow.isDestroyed()) {
-    avatarWindow.webContents.send('translate', text, meta)
-  }
-})
-
-ipcMain.on('partial', (event, text, meta) => {
-  if (avatarWindow && !avatarWindow.isDestroyed()) {
-    avatarWindow.webContents.send('partial', text, meta)
-  }
-})
-
-// Operador esvazia a fila do avatar (cada item sai registrado na telemetria)
-ipcMain.on('avatar:flush', () => {
-  if (avatarWindow && !avatarWindow.isDestroyed()) avatarWindow.webContents.send('avatar:flush')
-})
-
-// Estado da fila do avatar (atraso, pendentes) → janela de controle
-ipcMain.on('avatar:state', (event, state) => {
-  if (controlWindow && !controlWindow.isDestroyed()) controlWindow.webContents.send('avatar:state', state)
-})
-
-// === Telemetria e painel de diagnóstico (Ctrl+Shift+D na janela de controle) ===
+// === Telemetria e painel de diagnóstico (Ctrl+Shift+D na janela principal) ===
 const nowMs = () => performance.timeOrigin + performance.now()
 const telEvents = []
 const telSystem = []
@@ -269,22 +209,15 @@ ipcMain.handle('diag:reset', () => {
   telSystem.length = 0
 })
 
-// Alterna estado de "Always on Top" da janela do Avatar
+// Alterna estado de "Always on Top" da janela principal unificada
 ipcMain.handle('toggle-always-on-top', (event, flag) => {
-  if (avatarWindow && !avatarWindow.isDestroyed()) {
-    const current = avatarWindow.isAlwaysOnTop()
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const current = mainWindow.isAlwaysOnTop()
     const nextState = typeof flag === 'boolean' ? flag : !current
-    avatarWindow.setAlwaysOnTop(nextState, 'screen-saver')
+    mainWindow.setAlwaysOnTop(nextState, 'screen-saver')
     return nextState
   }
   return false
-})
-
-// Sincroniza status de gravação (Ao vivo / Pronto) com a janela do avatar
-ipcMain.on('recording-status', (event, isRecording) => {
-  if (avatarWindow && !avatarWindow.isDestroyed()) {
-    avatarWindow.webContents.send('recording-status', isRecording)
-  }
 })
 
 app.whenReady().then(createWindows)

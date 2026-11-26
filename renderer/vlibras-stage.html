@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sinalize — Palco VLibras</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #vlibras-access-wrapper,
+    [vw-access-button] {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    [vw],
+    [vw-plugin-wrapper],
+    .vw-plugin-top-wrapper,
+    #vlibras-app-root {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      border: none !important;
+      background: transparent !important;
+    }
+
+    /* Centraliza o container interno do VLibras sem interferir nas coordenadas de mouse do player */
+    #vlibras-app {
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      margin: auto !important;
+      border-radius: 16px !important;
+      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.2) !important;
+      max-width: 96% !important;
+      max-height: 96% !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Documento isolado contendo exclusivamente o Widget VLibras (sem nós de texto da UI principal) -->
+  <div vw class="enabled">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+      <div class="vw-plugin-top-wrapper"></div>
+    </div>
+  </div>
+
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+  <script>
+    new window.VLibras.Widget({
+      rootPath: 'https://vlibras.gov.br/app',
+      avatar: 'icaro',
+      opacity: 1,
+      position: 'R'
+    })
+
+    // Abertura automática do widget assim que estiver pronto
+    let widgetOpened = false
+    const waitWidget = setInterval(() => {
+      if (window.VLibrasWidget && typeof window.VLibrasWidget.open === 'function') {
+        window.VLibrasWidget.open()
+        widgetOpened = true
+      }
+      const accessWrapper = document.getElementById('vlibras-access-wrapper')
+      if (accessWrapper && accessWrapper.shadowRoot) {
+        const btn = accessWrapper.shadowRoot.querySelector('#vlibras-button')
+        if (btn) {
+          btn.click()
+          widgetOpened = true
+        }
+      }
+      const accessBtn = document.querySelector('[vw-access-button]')
+      if (accessBtn) {
+        accessBtn.click()
+        widgetOpened = true
+      }
+      if (widgetOpened && (window.plugin?.translate || window.vlibras?.translateAndPlay)) {
+        clearInterval(waitWidget)
+      }
+    }, 400)
+
+    // Encaminha atalhos globais (ESC para sair do Modo Telão, Ctrl+Shift+D para Diagnóstico) para a janela pai
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.parent?.setTheaterMode?.(false)
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        window.parent?.sinalize?.openDiagnostics?.()
+      }
+    })
+  </script>
+</body>
+</html>
