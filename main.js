@@ -1,7 +1,11 @@
-const { app, BrowserWindow, ipcMain, session, protocol, net, screen, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, session, protocol, net, screen, Menu, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
+const { execFile } = require('child_process')
+const { performance } = require('perf_hooks')
 const { pathToFileURL } = require('url')
+const telemetry = require('./telemetry')
 
 // Suprime erros de rede do Chromium (chunked upload do VLibras)
 app.commandLine.appendSwitch('log-level', '3')
@@ -76,7 +80,8 @@ async function createWindows() {
       contextIsolation: false,
       webSecurity: false,
       allowRunningInsecureContent: true,
-      nodeIntegration: true
+      nodeIntegration: true,
+      backgroundThrottling: false // a fila e a medição seguem com a janela oculta/minimizada
     }
   })
 
@@ -85,6 +90,14 @@ async function createWindows() {
     const responseHeaders = { ...details.responseHeaders }
     delete responseHeaders['Content-Security-Policy']
     delete responseHeaders['content-security-policy']
+
+    // Servidor de transcrição local (speaches) não envia CORS: libera para a janela de controle
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(details.url)) {
+      for (const h of Object.keys(responseHeaders)) {
+        if (h.toLowerCase() === 'access-control-allow-origin') delete responseHeaders[h]
+      }
+      responseHeaders['Access-Control-Allow-Origin'] = ['*']
+    }
     callback({ responseHeaders })
   })
 
@@ -104,7 +117,8 @@ async function createWindows() {
     backgroundColor: '#0b0d14',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true
+      contextIsolation: true,
+      backgroundThrottling: false // gravação contínua segue com a janela minimizada
     }
   })
 
@@ -124,16 +138,135 @@ async function createWindows() {
     if (avatarWindow && !avatarWindow.isDestroyed()) {
       avatarWindow.close()
     }
+    if (diagWindow && !diagWindow.isDestroyed()) diagWindow.close()
   })
 }
 
 // === Comunicação IPC ===
 
 // Envio de texto para o avatar
-ipcMain.on('translate', (event, text) => {
+ipcMain.on('translate', (event, text, meta) => {
   if (avatarWindow && !avatarWindow.isDestroyed()) {
-    avatarWindow.webContents.send('translate', text)
+    avatarWindow.webContents.send('translate', text, meta)
   }
+})
+
+ipcMain.on('partial', (event, text, meta) => {
+  if (avatarWindow && !avatarWindow.isDestroyed()) {
+    avatarWindow.webContents.send('partial', text, meta)
+  }
+})
+
+// Operador esvazia a fila do avatar (cada item sai registrado na telemetria)
+ipcMain.on('avatar:flush', () => {
+  if (avatarWindow && !avatarWindow.isDestroyed()) avatarWindow.webContents.send('avatar:flush')
+})
+
+// Estado da fila do avatar (atraso, pendentes) → janela de controle
+ipcMain.on('avatar:state', (event, state) => {
+  if (controlWindow && !controlWindow.isDestroyed()) controlWindow.webContents.send('avatar:state', state)
+})
+
+// === Telemetria e painel de diagnóstico (Ctrl+Shift+D na janela de controle) ===
+const nowMs = () => performance.timeOrigin + performance.now()
+const telEvents = []
+const telSystem = []
+let diagWindow = null
+let sysTimer = null
+let prevCpu = null
+
+ipcMain.on('telemetry', (event, ev) => telemetry.push(telEvents, ev))
+
+function cpuPercent() {
+  const c = os.cpus().reduce((a, { times: t }) => {
+    a.idle += t.idle
+    a.total += t.user + t.nice + t.sys + t.idle + t.irq
+    return a
+  }, { idle: 0, total: 0 })
+  const pct = prevCpu ? 100 * (1 - (c.idle - prevCpu.idle) / (c.total - prevCpu.total)) : null
+  prevCpu = c
+  return pct == null ? null : Math.round(pct)
+}
+
+// Amostra CPU/RAM do sistema e do app + GPU/VRAM (nvidia-smi), só com o painel aberto
+function sampleSystem() {
+  const metrics = app.getAppMetrics()
+  const sample = {
+    t: nowMs(),
+    cpuPct: cpuPercent(),
+    appCpuPct: Math.round(metrics.reduce((n, m) => n + m.cpu.percentCPUUsage, 0)),
+    appRamMB: Math.round(metrics.reduce((n, m) => n + m.memory.workingSetSize, 0) / 1024),
+    ramUsedMB: Math.round((os.totalmem() - os.freemem()) / 1048576),
+    ramTotalMB: Math.round(os.totalmem() / 1048576),
+    gpu: null,
+  }
+  execFile('nvidia-smi', ['--query-gpu=utilization.gpu,memory.used,memory.total', '--format=csv,noheader,nounits'],
+    { timeout: 1500, windowsHide: true }, (err, out) => {
+      if (!err) {
+        const [util, usedMB, totalMB] = out.trim().split(/,\s*/).map(Number)
+        sample.gpu = { util, usedMB, totalMB }
+      }
+      telemetry.push(telSystem, sample)
+    })
+}
+
+function openDiagnostics() {
+  if (diagWindow && !diagWindow.isDestroyed()) return diagWindow.focus()
+  diagWindow = new BrowserWindow({
+    width: 900,
+    height: 760,
+    title: 'Sinalize — Diagnóstico',
+    autoHideMenuBar: true,
+    backgroundColor: '#0b0d14',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  })
+  diagWindow.loadURL('app://sinalize/diag.html')
+  sampleSystem()
+  sysTimer = setInterval(sampleSystem, 2000)
+  diagWindow.on('closed', () => {
+    clearInterval(sysTimer)
+    diagWindow = null
+  })
+}
+
+ipcMain.on('diag:open', openDiagnostics)
+
+ipcMain.handle('diag:snapshot', () => {
+  const now = nowMs()
+  return {
+    now,
+    summary: telemetry.summary(telEvents, now),
+    metrics: telemetry.METRICS,
+    segments: telemetry.segments(telEvents).slice(-40),
+    system: telSystem.at(-1) || null,
+  }
+})
+
+ipcMain.handle('diag:export', async (event, format) => {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  const { canceled, filePath } = await dialog.showSaveDialog(diagWindow, {
+    defaultPath: `sinalize-diagnostico-${stamp}.${format}`,
+    filters: [{ name: format.toUpperCase(), extensions: [format] }]
+  })
+  if (canceled || !filePath) return null
+  const segs = telemetry.segments(telEvents)
+  const content = format === 'csv'
+    ? telemetry.toCSV(segs)
+    : JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      clock: 'ms epoch alta resolução (performance.timeOrigin + performance.now())',
+      summary: telemetry.summary(telEvents, nowMs()),
+      segments: segs,
+      events: telEvents,
+      system: telSystem,
+    }, null, 2)
+  fs.writeFileSync(filePath, content, 'utf8')
+  return filePath
+})
+
+ipcMain.handle('diag:reset', () => {
+  telEvents.length = 0
+  telSystem.length = 0
 })
 
 // Alterna estado de "Always on Top" da janela do Avatar

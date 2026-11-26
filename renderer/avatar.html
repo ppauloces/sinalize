@@ -186,6 +186,7 @@
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
     }
 
+    /* Legenda integral: todas as frases, em ordem; mostra as últimas linhas (as antigas sobem) */
     #caption {
       color: #f8fafc;
       font-size: 1.15rem;
@@ -196,6 +197,75 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
       word-break: break-word;
       transition: opacity 0.2s ease;
+      width: 100%;
+      max-height: 96px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .cap-line {
+      flex-shrink: 0;
+      color: #94a3b8;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    /* A frase final mais recente fica em destaque (mesmo com um parcial abaixo dela) */
+    .cap-line:nth-last-child(1 of .final) {
+      color: #f8fafc;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    /* Frase que o Ícaro está sinalizando agora */
+    .cap-line.signing {
+      text-decoration: underline;
+      text-decoration-color: #a78bfa;
+      text-underline-offset: 4px;
+    }
+
+    /* Fila esvaziada pelo operador: a frase continua na legenda, marcada como não sinalizada */
+    .cap-line.skipped::after {
+      content: ' (só legenda)';
+      font-size: 0.7em;
+      color: #f87171;
+    }
+
+    /* Texto ainda sendo falado: provisório, pode mudar */
+    .cap-line.partial {
+      color: #cbd5e1;
+      font-style: italic;
+      font-size: 1.05rem;
+    }
+
+    .badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Indicador de atraso da sinalização */
+    .lag-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
+    .lag-badge.warn {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+    .lag-badge.high {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
     }
 
     #caption.placeholder {
@@ -229,9 +299,13 @@
     <div class="brand">
       <span class="brand-name">Sinalize</span>
     </div>
-    <div id="statusBadge" class="status-badge ready">
-      <span class="status-dot"></span>
-      <span id="statusBadgeText">Pronto</span>
+    <div class="badges">
+      <!-- Atraso da sinalização em relação à fala (oculto quando em dia) -->
+      <div id="lagBadge" class="lag-badge" hidden></div>
+      <div id="statusBadge" class="status-badge ready">
+        <span class="status-dot"></span>
+        <span id="statusBadgeText">Pronto</span>
+      </div>
     </div>
   </header>
 
@@ -290,42 +364,220 @@
       }
     }, 400)
 
-    // Função de tradução com suporte amplo ao VLibras v7 e versões anteriores
-    function doTranslate(text) {
-      if (!text || !text.trim()) return false
-
-      // 1. VLibras v7 padrão (window.plugin.translate)
-      if (window.plugin && typeof window.plugin.translate === 'function') {
-        window.plugin.translate(text)
-        return true
-      }
-      // 2. VLibras v7 via window.vlibras
-      if (window.vlibras && typeof window.vlibras.translateAndPlay === 'function') {
-        window.vlibras.translateAndPlay(text)
-        return true
-      }
-      if (window.vlibras && typeof window.vlibras.translate === 'function') {
-        window.vlibras.translate(text)
-        return true
-      }
-      // 3. Fallback legado (window.plugin.player.translate)
-      if (window.plugin && window.plugin.player && typeof window.plugin.player.translate === 'function') {
-        window.plugin.player.translate(text)
-        return true
-      }
-      return false
-    }
-
+    // === Fila do avatar: só a frase mais recente espera ===
+    // Enquanto o avatar sinaliza, frases intermediárias são descartadas (a legenda mostra tudo),
+    // então o atraso fica limitado a ~1 frase em vez de acumular minutos.
+    // API do VLibras v7 (window.vlibras): translate(texto) -> glosa, play(glosa), status, setSpeed(n).
     // Comunicação IPC com o processo Electron
     const { ipcRenderer } = require('electron')
 
-    // Recebe texto traduzido da janela de controle
-    ipcRenderer.on('translate', (event, text) => {
+    // Telemetria (painel de diagnóstico): mesmo relógio da janela de controle (ver telemetry.js)
+    const nowMs = () => performance.timeOrigin + performance.now()
+    const countWords = (s) => ((s || '').match(/\S+/g) || []).length
+    function tel(type, seg, data) {
+      ipcRenderer.send('telemetry', { t: nowMs(), src: 'avatar', type, seg, data })
+    }
+
+    // === Fila do avatar: FIFO ordenada, tradução integral ===
+    // Nada é descartado automaticamente. Para não acumular atraso, a velocidade sobe com a fila
+    // e a fila se recupera nas pausas naturais da fala. Só o operador pode esvaziá-la (registrado).
+    // API do VLibras v7 (window.vlibras): translate(texto) -> glosa, play(glosa), status, speed, setSpeed(n).
+    const SPEED_NORMAL = 2   // velocidade padrão (a de antes da F1)
+    const SPEED_FAST = 2.5   // teto: maior opção do player. Limite de inteligibilidade a validar (F1.5)
+    const LAG_UP_MS = 4000   // atraso projetado acima disso: acelera
+    const LAG_DOWN_MS = 1500 // abaixo disso: volta ao normal (histerese evita oscilar)
+    const DEFAULT_MS_PER_WORD = 1000 // estimativa inicial (medida na auditoria a 2x); depois aprende
+
+    const queue = [] // { seg, text, words, speechEnd, recvAt, gloss: Promise|null }
+    let current = null // item em reprodução
+    let busy = false
+    let sawPlaying = false
+    let busySince = 0
+    let msPerWord = DEFAULT_MS_PER_WORD // média móvel observada (palavras em português × duração)
+
+    // Traduções em SÉRIE, na ordem da fila: o translate() do VLibras aborta a requisição anterior
+    // ainda em andamento e a abortada resolve `undefined` (vlibras-web-browsers, src/core/actions/index.ts).
+    // Em paralelo, as frases da frente seriam tocadas como português cru.
+    let translateChain = Promise.resolve()
+    function pretranslate(text, seg) {
+      if (!window.vlibras?.translate) return null
+      const job = translateChain.then(async () => {
+        tel('gloss.req', seg)
+        try {
+          const gloss = await window.vlibras.translate(text)
+          if (!gloss) throw new Error('glosa vazia')
+          tel('gloss.res', seg, { gloss, words: countWords(gloss) })
+          return gloss
+        } catch (e) {
+          // sem glosa o player recebe o texto em português (registrado: vira datilologia/sinais errados)
+          tel('gloss.err', seg, { error: String(e?.message || e) })
+          return text
+        }
+      })
+      translateChain = job
+      return job
+    }
+
+    function enqueue(text, seg, speechEnd) {
+      const words = countWords(text)
+      tel('recv', seg, { text, words, depth: queue.length })
+      // Já traduz texto -> glosa, enquanto o avatar ainda sinaliza o que veio antes
+      queue.push({ seg, text, words, speechEnd: speechEnd ?? nowMs(), recvAt: nowMs(), gloss: pretranslate(text, seg) })
+      pump()
+    }
+
+    // Esvaziamento manual pelo operador: cada item sai registrado (nunca em silêncio)
+    function flushQueue() {
+      for (const item of queue.splice(0)) {
+        tel('drop', item.seg, { reason: 'fila esvaziada pelo operador', text: item.text })
+        markCaption(item.seg, 'skipped')
+      }
+      updateLag()
+    }
+
+    // Quanto falta sinalizar: restante do item atual + itens na fila, em ms estimados
+    function backlogMs() {
+      let ms = queue.reduce((n, it) => n + it.words * msPerWord, 0)
+      if (current?.startedAt) ms += Math.max(0, current.words * msPerWord - (nowMs() - current.startedAt))
+      return ms
+    }
+
+    // Atraso atual: há quanto tempo foi dita a fala que o avatar está (ou deveria estar) sinalizando
+    function lagMs() {
+      const ref = current || queue[0]
+      return ref ? Math.max(0, nowMs() - ref.speechEnd) : 0
+    }
+
+    let desiredSpeed = SPEED_NORMAL
+    function chooseSpeed() {
+      const projected = lagMs() + backlogMs()
+      if (projected > LAG_UP_MS) desiredSpeed = SPEED_FAST
+      else if (projected < LAG_DOWN_MS) desiredSpeed = SPEED_NORMAL
+      return desiredSpeed
+    }
+
+    async function pump() {
+      const v = window.vlibras
+      if (!v?.play) return
+      if (busy) {
+        if (v.status === 'playing' || v.status === 'paused') {
+          if (!sawPlaying) {
+            current.startedAt = nowMs()
+            tel('anim.start', current.seg)
+            markCaption(current.seg, 'signing')
+          }
+          sawPlaying = true
+        }
+        // ponytail: 5s de folga caso o player nunca reporte 'playing' (glosa vazia, erro)
+        else if (sawPlaying || nowMs() - busySince > 5000) {
+          if (sawPlaying) {
+            const dur = nowMs() - current.startedAt
+            if (current.words) msPerWord = 0.7 * msPerWord + 0.3 * (dur / current.words)
+            tel('anim.end', current.seg)
+          } else {
+            tel('anim.timeout', current.seg)
+          }
+          markCaption(current.seg, 'done')
+          busy = false
+          current = null
+        }
+        if (busy) return
+      }
+      if (!queue.length || v.status !== 'idle') return
+
+      const item = queue.shift()
+      busy = true
+      sawPlaying = false
+      current = item
+      busySince = Infinity // não expira enquanto aguarda a tradução
+      const gloss = (await (item.gloss || pretranslate(item.text, item.seg))) || item.text
+      const speed = chooseSpeed()
+      if (window.vlibras.speed !== speed) {
+        tel('speed.change', item.seg, { from: window.vlibras.speed, to: speed, lagMs: Math.round(lagMs()), backlogMs: Math.round(backlogMs()) })
+        window.vlibras.setSpeed(speed)
+      }
+      busySince = nowMs()
+      tel('play', item.seg, { speed, glossWords: countWords(gloss), depth: queue.length, lagMs: Math.round(lagMs()) })
+      window.vlibras.play(gloss)
+    }
+    // 50ms: resolução da medição de início/fim da animação (o player só expõe `status`)
+    setInterval(pump, 50)
+
+    // === Indicador de atraso ===
+    const lagBadge = document.getElementById('lagBadge')
+    let lastLagTel = 0
+    function updateLag() {
+      const lag = lagMs()
+      const pending = queue.length
+      const active = busy || pending > 0
+      lagBadge.hidden = !active || (lag < 1500 && pending === 0)
+      lagBadge.textContent = `Atraso ${(lag / 1000).toFixed(0)} s` + (pending ? ` · ${pending} na fila` : '')
+      lagBadge.className = 'lag-badge' + (lag > 8000 ? ' high' : lag > 3000 ? ' warn' : '')
+      const state = { lagMs: Math.round(lag), pending, backlogMs: Math.round(backlogMs()), speed: desiredSpeed }
+      ipcRenderer.send('avatar:state', state)
+      if (active && nowMs() - lastLagTel > 1000) {
+        lastLagTel = nowMs()
+        tel('lag', null, state)
+      }
+    }
+    setInterval(updateLag, 250)
+
+    // === Legenda integral (independente da fila do avatar) ===
+    // Frases finais em ordem de segmento; o parcial fica sempre por último.
+    const MAX_CAPTION_LINES = 200
+    let partialLine = null
+    const segOrder = (seg) => Number(String(seg).split('-').pop()) || Infinity
+
+    function captionReady() {
+      if (caption.classList.contains('placeholder')) {
+        caption.classList.remove('placeholder')
+        caption.textContent = ''
+      }
+    }
+
+    function addFinalLine(seg, text) {
+      captionReady()
+      const line = document.createElement('div')
+      line.className = 'cap-line final pending'
+      line.dataset.seg = seg
+      line.textContent = text
+      // insere antes da 1ª linha final de segmento posterior (o final de N pode chegar depois do parcial de N+1)
+      const later = [...caption.querySelectorAll('.cap-line.final')].find((l) => segOrder(l.dataset.seg) > segOrder(seg))
+      caption.insertBefore(line, later || partialLine)
+      if (partialLine?.dataset.seg === seg) {
+        partialLine.remove()
+        partialLine = null
+      }
+      while (caption.querySelectorAll('.cap-line.final').length > MAX_CAPTION_LINES) caption.querySelector('.cap-line.final').remove()
+    }
+
+    function setPartialLine(seg, text) {
+      captionReady()
+      // ignora parcial atrasado de um segmento que já tem texto final
+      if (caption.querySelector(`.cap-line.final[data-seg="${CSS.escape(seg)}"]`)) return
+      if (!partialLine) {
+        partialLine = document.createElement('div')
+        partialLine.className = 'cap-line partial'
+        caption.append(partialLine)
+      }
+      partialLine.dataset.seg = seg
+      partialLine.textContent = text
+    }
+
+    function markCaption(seg, state) {
+      const line = caption.querySelector(`.cap-line.final[data-seg="${CSS.escape(seg)}"]`)
+      if (!line) return
+      line.classList.remove('pending', 'signing')
+      if (state !== 'done') line.classList.add(state)
+    }
+
+    let extCounter = 0
+    ipcRenderer.on('translate', (event, text, meta) => {
       const cleanText = (text || '').trim()
       if (!cleanText) return
+      const seg = meta?.seg || `ext-${++extCounter}`
 
-      caption.classList.remove('placeholder')
-      caption.textContent = cleanText
+      addFinalLine(seg, cleanText)
 
       // Efeito sutil de transição ao atualizar a legenda
       const container = document.querySelector('.caption-container')
@@ -335,18 +587,17 @@
         container.classList.add('caption-flash')
       }
 
-      // Executa a tradução no avatar
-      if (doTranslate(cleanText)) return
-
-      // Tenta novamente enquanto o motor do avatar carrega os chunks
-      let elapsed = 0
-      const retry = setInterval(() => {
-        elapsed += 300
-        if (doTranslate(cleanText) || elapsed >= 25000) {
-          clearInterval(retry)
-        }
-      }, 300)
+      // Fila do avatar (o pump também espera o player carregar)
+      enqueue(cleanText, seg, meta?.speechEnd)
     })
+
+    // Legenda ao vivo: texto provisório da frase em andamento (só legenda, não sinaliza)
+    ipcRenderer.on('partial', (event, text, meta) => {
+      const clean = (text || '').trim()
+      if (clean) setPartialLine(meta?.seg || 'parcial', clean)
+    })
+
+    ipcRenderer.on('avatar:flush', flushQueue)
 
     // Sincroniza o indicador de status (Ao vivo vs Pronto)
     ipcRenderer.on('recording-status', (event, isRecording) => {
