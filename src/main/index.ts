@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 import { BrowserWindow, Menu, app, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { IPC } from '../shared/api'
 import { OverlayManager } from './overlay/overlay-manager'
-import { PRELOAD, RENDERER_DIR, pageUrl } from './pages'
+import { PRELOAD, RENDERER_DIR, appOrigin, isAppUrl, pageUrl } from './pages'
 import * as telemetry from './telemetry'
 
 // Suprime erros de rede do Chromium (chunked upload do VLibras)
@@ -38,22 +38,20 @@ async function createWindows() {
     return net.fetch(pathToFileURL(file).toString())
   })
 
-  // Concede as permissões de mídia (microfone)
-  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(true))
-  session.defaultSession.setPermissionCheckHandler(() => true)
+  // Só o microfone, só para as páginas do app: o iframe de terceiros (player Unity) não herda permissões.
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
+    const audioOnly = 'mediaTypes' in details && (details.mediaTypes ?? []).every((t) => t === 'audio')
+    callback(permission === 'media' && audioOnly && isAppUrl(details.requestingUrl || wc.getURL()))
+  })
+  session.defaultSession.setPermissionCheckHandler((_wc, permission, origin) => permission === 'media' && isAppUrl(origin))
 
-  // Remove CSP para permitir scripts externos do VLibras e libera CORS para o servidor local (speaches)
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  // O servidor local de transcrição (speaches) não envia CORS; libera só ele e só para o app.
+  session.defaultSession.webRequest.onHeadersReceived({ urls: ['http://localhost:8000/*', 'http://127.0.0.1:8000/*'] }, (details, callback) => {
     const responseHeaders = { ...details.responseHeaders }
-    delete responseHeaders['Content-Security-Policy']
-    delete responseHeaders['content-security-policy']
-
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(details.url)) {
-      for (const h of Object.keys(responseHeaders)) {
-        if (h.toLowerCase() === 'access-control-allow-origin') delete responseHeaders[h]
-      }
-      responseHeaders['Access-Control-Allow-Origin'] = ['*']
+    for (const h of Object.keys(responseHeaders)) {
+      if (h.toLowerCase() === 'access-control-allow-origin') delete responseHeaders[h]
     }
+    responseHeaders['Access-Control-Allow-Origin'] = [appOrigin()]
     callback({ responseHeaders })
   })
 

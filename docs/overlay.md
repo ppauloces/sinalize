@@ -46,8 +46,10 @@ key**: o Sinalize dirige o Unity oficial diretamente pelo mesmo protocolo `postM
 (`src/renderer/public/vlibras-stage.html`) e descarta o painel HTML do widget. A tradução português →
 glosa usa o mesmo serviço do widget (`POST https://traducao2.vlibras.gov.br/translate`), chamado pelo
 processo principal: o serviço não envia CORS, e assim o Studio roda com `webSecurity` ligado. Nenhum mecanismo de
-segurança do Electron foi desligado para isso; as janelas do overlay usam `contextIsolation`, `sandbox`
-e `nodeIntegration: false`.
+segurança do Electron foi desligado para isso: todas as janelas usam `contextIsolation`, `sandbox` e
+`nodeIntegration: false`; o Studio roda com `webSecurity`. A página do Unity não envia CSP nem
+`X-Frame-Options`, então o app não remove cabeçalhos de segurança de nenhuma resposta. Permissões:
+só microfone (áudio), só para as páginas do app; o iframe do player e pedidos de câmera são negados.
 
 **Licença:** VLibras é LGPLv3. O player é carregado do servidor oficial, sem modificação nem
 redistribuição de binários.
