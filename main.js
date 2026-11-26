@@ -6,6 +6,7 @@ const { execFile } = require('child_process')
 const { performance } = require('perf_hooks')
 const { pathToFileURL } = require('url')
 const telemetry = require('./telemetry')
+const { OverlayManager } = require('./main/overlay-manager')
 
 // Suprime erros de rede do Chromium (chunked upload do VLibras)
 app.commandLine.appendSwitch('log-level', '3')
@@ -24,6 +25,7 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let mainWindow = null
+const overlay = new OverlayManager(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
 
 async function createWindows() {
   // Oculta a barra de menu padrão do sistema (File, Edit, View, Window, Help)
@@ -103,6 +105,7 @@ async function createWindows() {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+    overlay.close()
     if (diagWindow && !diagWindow.isDestroyed()) diagWindow.close()
   })
 }
@@ -220,7 +223,10 @@ ipcMain.handle('toggle-always-on-top', (event, flag) => {
   return false
 })
 
-app.whenReady().then(createWindows)
+app.whenReady().then(() => {
+  overlay.init()
+  return createWindows()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

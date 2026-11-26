@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Sinalize — Avatar</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #player {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: transparent;
+    }
+
+    /* Ferramentas de edição: só existem no modo edição, nada decorativo fica sobre os slides */
+    .edit-layer { display: none; }
+    body.editing .edit-layer { display: block; }
+
+    .frame {
+      position: absolute;
+      inset: 0;
+      border: 2px dashed rgba(59, 130, 246, 0.95);
+      border-radius: 10px;
+      background: rgba(59, 130, 246, 0.07);
+      -webkit-app-region: drag;
+      cursor: move;
+    }
+
+    .toolbar {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      right: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 9px;
+      background: rgba(15, 23, 42, 0.88);
+      box-shadow: 0 4px 14px rgba(2, 6, 23, 0.35);
+      -webkit-app-region: no-drag;
+    }
+
+    .toolbar button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #e2e8f0;
+      cursor: pointer;
+    }
+
+    .toolbar button:hover { background: rgba(59, 130, 246, 0.35); color: #fff; }
+    .toolbar button.danger:hover { background: rgba(239, 68, 68, 0.45); }
+    .toolbar .drag-handle { -webkit-app-region: drag; cursor: move; }
+    .toolbar svg { width: 16px; height: 16px; pointer-events: none; }
+
+    .resize {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(37, 99, 235, 0.95);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: nwse-resize;
+      -webkit-app-region: no-drag;
+      touch-action: none;
+    }
+
+    .resize svg { width: 14px; height: 14px; pointer-events: none; }
+
+    .loading {
+      position: absolute;
+      left: 50%;
+      bottom: 40%;
+      transform: translateX(-50%);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: rgba(15, 23, 42, 0.8);
+      color: #cbd5e1;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="editing">
+  <iframe id="player" title="Avatar VLibras" tabindex="-1" allowtransparency="true"></iframe>
+
+  <div class="edit-layer">
+    <div class="frame" title="Arraste para mover"></div>
+    <div id="loading" class="loading">Carregando avatar…</div>
+    <!-- Ícones: Lucide (move, move-diagonal-2, lock, monitor, user-cog, captions, eye-off, captions-off, x) -->
+    <nav class="toolbar" aria-label="Controles do overlay">
+      <button class="drag-handle" type="button" title="Mover (arraste)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="m15 19-3 3-3-3"/><path d="m19 9 3 3-3 3"/><path d="M2 12h20"/><path d="m5 9-3 3 3 3"/><path d="m9 5 3-3 3 3"/></svg>
+      </button>
+      <button class="resize-handle" type="button" title="Redimensionar (arraste)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 13v6h-6"/><path d="M5 11V5h6"/><path d="m5 5 14 14"/></svg>
+      </button>
+      <button type="button" data-cmd="edit" title="Bloquear posição e apresentar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </button>
+      <button type="button" data-cmd="nextDisplay" title="Mover para o próximo monitor">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+      </button>
+      <button type="button" data-cmd="focusStudio" data-arg="avatar" title="Configurar avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/><path d="m19.6 18.7-.4-1"/><path d="m16.8 12.3-.4-1"/><path d="m14.3 16.6 1-.4"/><path d="m20.7 13.8 1-.4"/></svg>
+      </button>
+      <button type="button" data-cmd="focusStudio" data-arg="caption" title="Configurar legendas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>
+      </button>
+      <button type="button" data-cmd="toggleAvatar" title="Ocultar avatar (a sinalização continua no Studio)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+      </button>
+      <button id="btnCaption" type="button" data-cmd="toggleCaption" title="Ocultar legendas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 5H19a2 2 0 0 1 2 2v8.5"/><path d="M17 11h-.5"/><path d="M19 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2"/><path d="m2 2 20 20"/><path d="M7 11h4"/><path d="M7 15h2.5"/></svg>
+      </button>
+      <button class="danger" type="button" data-cmd="close" title="Fechar overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </nav>
+    <div class="resize resize-handle" title="Redimensionar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v6h-6"/><path d="m21 21-7-7"/></svg>
+    </div>
+  </div>
+
+  <script>
+    const AVATAR_RATIO = 420 / 320
+    const PLAYER_METHODS = ['play', 'setSpeed', 'setAvatar', 'stop']
+    const frame = document.getElementById('player')
+    const loading = document.getElementById('loading')
+    const btnCaption = document.getElementById('btnCaption')
+    const avatar = new URLSearchParams(location.search).get('avatar') || 'icaro'
+    frame.src = `vlibras-stage.html?avatar=${encodeURIComponent(avatar)}`
+
+    // Ponte do motor: a fila do Studio comanda; o estado do Unity volta a cada mudança.
+    const player = () => frame.contentWindow?.vlibras
+    window.sinalize.player.onCmd((method, arg) => {
+      if (PLAYER_METHODS.includes(method)) player()?.[method]?.(arg)
+    })
+    let lastStatus = ''
+    setInterval(() => {
+      const v = player()
+      const s = { status: v?.status ?? null, speed: v?.speed ?? null }
+      loading.hidden = s.status !== null
+      const key = `${s.status}|${s.speed}`
+      if (key !== lastStatus) {
+        lastStatus = key
+        window.sinalize.player.status(s)
+      }
+    }, 50)
+
+    function applyState(state) {
+      document.body.classList.toggle('editing', state.editing)
+      const hidden = !state.settings.caption.visible
+      btnCaption.title = hidden ? 'Mostrar legendas' : 'Ocultar legendas'
+      btnCaption.style.opacity = hidden ? '0.55' : '1'
+    }
+    window.sinalize.overlay.get().then(applyState)
+    window.sinalize.overlay.onState(applyState)
+
+    for (const btn of document.querySelectorAll('[data-cmd]')) {
+      btn.addEventListener('click', () => {
+        const { cmd, arg } = btn.dataset
+        const value = cmd === 'edit' ? false : cmd === 'nextDisplay' ? 'avatar' : arg
+        window.sinalize.overlay.command(cmd, value).catch((e) => console.error(e))
+      })
+    }
+
+    // Redimensionamento programático (janelas transparentes no Windows não redimensionam nativamente).
+    for (const handle of document.querySelectorAll('.resize-handle')) {
+      handle.addEventListener('pointerdown', (e) => {
+        handle.setPointerCapture(e.pointerId)
+        const startX = e.screenX
+        const startY = e.screenY
+        const startW = window.innerWidth
+        let raf = 0
+        const move = (ev) => {
+          cancelAnimationFrame(raf)
+          raf = requestAnimationFrame(() => {
+            const delta = ((ev.screenX - startX) + (ev.screenY - startY) / AVATAR_RATIO) / 2
+            window.sinalize.overlay.command('resizeAvatar', Math.round(startW + delta))
+          })
+        }
+        const end = () => {
+          handle.removeEventListener('pointermove', move)
+          handle.removeEventListener('pointerup', end)
+          handle.removeEventListener('pointercancel', end)
+        }
+        handle.addEventListener('pointermove', move)
+        handle.addEventListener('pointerup', end)
+        handle.addEventListener('pointercancel', end)
+      })
+    }
+  </script>
+</body>
+</html>

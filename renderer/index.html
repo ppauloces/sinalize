@@ -553,7 +553,7 @@
     /* Abas do Painel (Controle | Glossário / Léxico) */
     .panel-tabs {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 4px;
       padding: 4px;
       background: var(--bg-subtle);
@@ -1338,6 +1338,142 @@
 
     #status.active { color: var(--accent-soft-text); font-weight: 500; }
     #status.error { color: var(--danger-text); font-weight: 500; }
+
+    /* =====================================================================
+       ABA OVERLAY — avatar e legendas flutuantes sobre outros aplicativos
+       ===================================================================== */
+    .stage-note {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--text-secondary);
+      font-size: 0.86rem;
+      text-align: center;
+    }
+
+    .stage-note[hidden] { display: none; }
+
+    .ov-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .ov-row > .glossary-input { flex: 1; min-width: 140px; width: auto; }
+
+    .ov-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 11px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .ov-btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--accent-soft-border); }
+    .ov-btn.primary { background: var(--accent-gradient); border-color: transparent; color: #fff; box-shadow: var(--shadow-primary); }
+    .ov-btn.primary:hover:not(:disabled) { background: var(--accent-gradient-hover); }
+    .ov-btn:disabled { opacity: 0.5; cursor: default; }
+
+    .ov-pill {
+      flex: 1;
+      min-width: 120px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .ov-pill.on { color: var(--success-text); }
+    .ov-pill.edit { color: var(--warn-text); }
+
+    .ov-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px 12px;
+    }
+
+    .ov-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 0;
+    }
+
+    .ov-field.wide { grid-column: 1 / -1; }
+    .ov-field output { font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .ov-field .glossary-input { padding: 6px 8px; }
+    .ov-field input[type="range"] { width: 100%; accent-color: var(--accent-bright); }
+    .ov-field input[type="color"] { width: 100%; height: 30px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); cursor: pointer; }
+    .ov-field .glossary-input.error { border-color: var(--danger-dot); }
+    .ov-field small { color: var(--danger-text); font-weight: 500; }
+
+    .ov-check {
+      flex-direction: row;
+      align-items: center;
+      gap: 7px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .ov-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent-bright); }
+
+    .ov-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .ov-hint kbd {
+      font-family: inherit;
+      font-size: 0.68rem;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-subtle);
+    }
+
+    /* Prévia proporcional: monitores e elementos flutuantes na escala real */
+    .ov-preview {
+      position: relative;
+      width: 100%;
+      min-height: 60px;
+      border-radius: 8px;
+      background: var(--bg-subtle);
+      overflow: hidden;
+    }
+
+    .ov-preview > div {
+      position: absolute;
+      box-sizing: border-box;
+      border-radius: 3px;
+      padding: 2px 4px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .ov-mon { border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-muted); }
+    .ov-mon.primary { border-color: var(--accent-soft-border); }
+    .ov-el.avatar { background: rgba(37, 99, 235, 0.28); border: 1px solid var(--accent-bright); color: var(--accent-soft-text); }
+    .ov-el.caption { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(15, 23, 42, 0.85); color: #fff; text-align: center; }
+    .ov-el.off { opacity: 0.35; border-style: dashed; }
   </style>
 </head>
 <body>
@@ -1390,7 +1526,11 @@
 
       <!-- Palco Central do Widget VLibras (isolado em iframe para impedir captura de mouse/hover na UI) -->
       <main id="avatar-stage">
-        <iframe id="avatarFrame" src="vlibras-stage.html" title="Avatar VLibras" allowtransparency="true"></iframe>
+        <iframe id="avatarFrame" src="vlibras-stage.html?subtitles=1" title="Avatar VLibras" allowtransparency="true"></iframe>
+        <div id="stageOverlayNote" class="stage-note" hidden>
+          <span>O avatar está sinalizando no overlay flutuante.</span>
+          <button class="ov-btn" type="button" onclick="ovCommand('toggleEdit')">Editar posições do overlay</button>
+        </div>
       </main>
 
       <!-- Card de Legenda (Closed Caption) Glassmorphism -->
@@ -1452,6 +1592,15 @@
               </svg>
               <span>Glossário / Léxico</span>
               <span id="glossaryCount" class="tab-count">0</span>
+            </button>
+            <button id="tabBtnOverlay" class="tab-btn" type="button" role="tab" aria-selected="false" onclick="switchTab('overlay')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="14" x="2" y="3" rx="2"></rect>
+                <rect width="6" height="6" x="14" y="9" rx="1"></rect>
+                <line x1="8" x2="16" y1="21" y2="21"></line>
+                <line x1="12" x2="12" y1="17" y2="21"></line>
+              </svg>
+              <span>Overlay</span>
             </button>
           </div>
         </div>
@@ -1611,6 +1760,132 @@
           <div id="glossaryList" class="glossary-list"></div>
         </div>
 
+        <!-- ==================== ABA 3: OVERLAY (avatar e legendas flutuantes) ==================== -->
+        <div id="tabPaneOverlay" class="tab-pane" hidden>
+          <section class="card-box">
+            <div class="ov-row">
+              <span id="ovStatus" class="ov-pill">Overlay desligado</span>
+              <button id="ovToggle" class="ov-btn primary" type="button" onclick="ovCommand('toggle')">Abrir overlay</button>
+              <button id="ovEdit" class="ov-btn" type="button" onclick="ovCommand('toggleEdit')" disabled>Bloquear e apresentar</button>
+              <button class="ov-btn" type="button" onclick="ovCommand('reset')" title="Restaurar posições padrão">Restaurar</button>
+            </div>
+            <div id="ovPreview" class="ov-preview" aria-label="Prévia do posicionamento nos monitores"></div>
+            <p class="ov-hint">Apresentando, o overlay deixa os cliques passarem para o PowerPoint e os demais apps. Para voltar à edição use <kbd id="ovEditKey">—</kbd> ou o botão acima.</p>
+          </section>
+
+          <div class="section-label"><span>Presets de apresentação</span></div>
+          <section class="card-box">
+            <div class="ov-row">
+              <select id="ovPreset" class="glossary-input"></select>
+              <button class="ov-btn" type="button" onclick="ovApplyPreset()">Aplicar</button>
+              <button id="ovDeletePreset" class="ov-btn" type="button" onclick="ovDeletePreset()">Excluir</button>
+            </div>
+            <form class="ov-row" onsubmit="ovSavePreset(event)">
+              <input id="ovPresetName" class="glossary-input" type="text" maxlength="40" placeholder="Nome para salvar a configuração atual" required/>
+              <button class="ov-btn" type="submit">Salvar preset</button>
+            </form>
+          </section>
+
+          <div class="section-label"><span>Avatar</span></div>
+          <section id="ovSecAvatar" class="card-box ov-grid">
+            <label class="ov-field ov-check"><input type="checkbox" data-set="avatar.visible"/> Exibir avatar</label>
+            <label class="ov-field ov-check"><input type="checkbox" data-set="avatar.alwaysOnTop"/> Sempre em primeiro plano</label>
+            <label class="ov-field ov-check wide"><input id="ovLocked" type="checkbox"/> Bloquear posição (modo apresentação)</label>
+            <label class="ov-field">Personagem
+              <select class="glossary-input" data-set="avatar.character">
+                <option value="icaro">Ícaro</option>
+                <option value="hosana">Hosana</option>
+                <option value="guga">Guga</option>
+              </select>
+            </label>
+            <label class="ov-field">Velocidade base
+              <select class="glossary-input" data-set="avatar.speed" data-num>
+                <option value="1">1x</option>
+                <option value="1.5">1,5x</option>
+                <option value="2">2x</option>
+              </select>
+            </label>
+            <label class="ov-field wide">Tamanho <output data-out="avatar.width" data-fmt="px"></output>
+              <input type="range" min="140" max="900" step="10" data-set="avatar.width"/>
+            </label>
+            <label class="ov-field">Posição
+              <select class="glossary-input ov-anchors" data-set="avatar.anchor"></select>
+            </label>
+            <label class="ov-field">Monitor
+              <select class="glossary-input ov-displays" data-set="avatar.displayId" data-num></select>
+            </label>
+          </section>
+
+          <div class="section-label"><span>Legendas</span></div>
+          <section id="ovSecCaption" class="card-box ov-grid">
+            <label class="ov-field ov-check wide"><input type="checkbox" data-set="caption.visible"/> Exibir legendas</label>
+            <label class="ov-field ov-check"><input type="checkbox" data-set="caption.shadow"/> Sombra do texto</label>
+            <label class="ov-field ov-check"><input type="checkbox" data-set="caption.outline"/> Contorno do texto</label>
+            <label class="ov-field wide">Origem do texto
+              <select class="glossary-input" data-set="caption.source">
+                <option value="live">Transcrição em tempo real (inclui trecho provisório)</option>
+                <option value="final">Texto consolidado da transcrição</option>
+                <option value="signing">Frase entregue ao avatar (sem sincronia por sinal)</option>
+              </select>
+            </label>
+            <label class="ov-field">Fonte
+              <select class="glossary-input" data-set="caption.fontFamily">
+                <option>Inter</option>
+                <option>Geist</option>
+                <option>Segoe UI</option>
+                <option>Arial</option>
+                <option>Verdana</option>
+              </select>
+            </label>
+            <label class="ov-field">Peso
+              <select class="glossary-input" data-set="caption.fontWeight" data-num>
+                <option value="400">Regular</option>
+                <option value="500">Médio</option>
+                <option value="600">Semibold</option>
+                <option value="700">Negrito</option>
+                <option value="800">Extra negrito</option>
+              </select>
+            </label>
+            <label class="ov-field">Tamanho <output data-out="caption.fontSize" data-fmt="px"></output>
+              <input type="range" min="14" max="96" step="1" data-set="caption.fontSize"/>
+            </label>
+            <label class="ov-field">Largura máxima <output data-out="caption.maxWidth" data-fmt="px"></output>
+              <input type="range" min="300" max="2400" step="20" data-set="caption.maxWidth"/>
+            </label>
+            <label class="ov-field">Cor do texto <input type="color" data-set="caption.color"/></label>
+            <label class="ov-field">Cor do fundo <input type="color" data-set="caption.bgColor"/></label>
+            <label class="ov-field">Opacidade do fundo <output data-out="caption.bgOpacity" data-fmt="pct"></output>
+              <input type="range" min="0" max="1" step="0.05" data-set="caption.bgOpacity"/>
+            </label>
+            <label class="ov-field">Espaçamento entre linhas <output data-out="caption.lineHeight"></output>
+              <input type="range" min="1" max="2" step="0.05" data-set="caption.lineHeight"/>
+            </label>
+            <label class="ov-field">Máximo de linhas <output data-out="caption.maxLines"></output>
+              <input type="range" min="1" max="6" step="1" data-set="caption.maxLines"/>
+            </label>
+            <label class="ov-field">Permanência após a fala <output data-out="caption.holdMs" data-fmt="s"></output>
+              <input type="range" min="0" max="15000" step="500" data-set="caption.holdMs"/>
+            </label>
+            <label class="ov-field">Posição
+              <select class="glossary-input ov-anchors" data-set="caption.anchor"></select>
+            </label>
+            <label class="ov-field">Monitor
+              <select class="glossary-input ov-displays" data-set="caption.displayId" data-num></select>
+            </label>
+          </section>
+
+          <div class="section-label"><span>Comportamento</span></div>
+          <section class="card-box ov-grid">
+            <label class="ov-field ov-check wide"><input type="checkbox" data-set="behavior.clickThrough"/> Permitir cliques através do overlay ao apresentar</label>
+            <label class="ov-field ov-check wide"><input type="checkbox" data-set="behavior.restoreLast"/> Restaurar a última posição ao abrir</label>
+            <label class="ov-field ov-check wide"><input type="checkbox" data-set="behavior.autoStart"/> Abrir o overlay ao iniciar a gravação</label>
+            <label class="ov-field ov-check wide"><input type="checkbox" data-set="behavior.useFullBounds"/> Posicionar pela tela inteira (ignorar a barra de tarefas)</label>
+          </section>
+
+          <div class="section-label"><span>Atalhos globais</span><small class="section-hint">Ex.: Ctrl+Alt+Shift+O · vazio desativa</small></div>
+          <section id="ovShortcuts" class="card-box ov-grid"></section>
+        </div>
+
         <!-- Feedback Operacional do Rodapé -->
         <footer id="status">Pronto</footer>
       </div>
@@ -1647,11 +1922,70 @@
     //     captura de mouse/hover nos botões da interface; chamada direta via contentWindow)
     // =========================================================================
     const avatarFrame = document.getElementById('avatarFrame')
+    const stageOverlayNote = document.getElementById('stageOverlayNote')
+    let ovState = null // estado do Modo Overlay (main/overlay-manager.js)
+
+    // Uma única instância do Unity por vez: no palco do Studio ou na janela flutuante do overlay.
+    // A fila abaixo é a mesma nos dois casos; no overlay os comandos seguem por IPC.
+    let playerEngine = 'studio'
+    const remotePlayer = {
+      status: null,
+      speed: null,
+      play: (gloss) => window.sinalize?.player?.cmd('play', String(gloss)),
+      setSpeed(n) {
+        this.speed = n
+        window.sinalize?.player?.cmd('setSpeed', n)
+      },
+      setAvatar: (name) => window.sinalize?.player?.cmd('setAvatar', name),
+    }
+    window.sinalize?.player?.onStatus((s) => {
+      remotePlayer.status = s.status
+      remotePlayer.speed = s.speed
+    })
+
     const getVLibras = () => {
+      if (playerEngine === 'overlay') return remotePlayer
       try {
         return avatarFrame?.contentWindow?.vlibras || null
       } catch {
         return null
+      }
+    }
+
+    const stageSrc = () => `vlibras-stage.html?subtitles=1&avatar=${ovState?.settings.avatar.character || 'icaro'}`
+
+    function setPlayerEngine(engine) {
+      if (engine === playerEngine) return
+      // Preserva a sessão ao alternar a saída do avatar: a frase em curso volta para a frente da fila.
+      if (current) {
+        tel('avatar', 'requeue', current.seg, { engine })
+        markCaption(current.seg, 'pending')
+        queue.unshift(current)
+        current = null
+        busy = false
+      }
+      playerEngine = engine
+      remotePlayer.status = null
+      // Libera GPU/memória do Unity do Studio enquanto o avatar está no overlay.
+      avatarFrame.src = engine === 'overlay' ? 'about:blank' : stageSrc()
+      stageOverlayNote.hidden = engine !== 'overlay'
+    }
+
+    // Português → glosa: mesmo serviço e formato de resposta que o widget oficial usa.
+    const TRANSLATE_URL = 'https://traducao2.vlibras.gov.br/translate'
+    async function translateToGloss(text) {
+      const res = await fetch(TRANSLATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(10000),
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const body = await res.text()
+      try {
+        return JSON.parse(body).traducao || body
+      } catch {
+        return body
       }
     }
 
@@ -1661,8 +1995,9 @@
     const avatarStateText = document.getElementById('avatarStateText')
 
     // Fila FIFO ordenada do avatar com velocidade adaptativa (2x–2.5x)
-    const SPEED_NORMAL = 2
-    const SPEED_FAST = 2.5
+    // Velocidade base vem do painel Overlay (Avatar › Velocidade); a fila acelera até +0,5x (teto 2,5x do player).
+    const speedNormal = () => ovState?.settings.avatar.speed ?? 2
+    const speedFast = () => Math.min(2.5, speedNormal() + 0.5)
     const LAG_UP_MS = 4000
     const LAG_DOWN_MS = 1500
     const DEFAULT_MS_PER_WORD = 1000
@@ -1676,14 +2011,10 @@
     let translateChain = Promise.resolve()
 
     function pretranslate(text, seg) {
-      const v = getVLibras()
-      if (!v?.translate) return null
       const job = translateChain.then(async () => {
-        const vl = getVLibras()
-        if (!vl?.translate) return text
         tel('avatar', 'gloss.req', seg)
         try {
-          const gloss = await vl.translate(text)
+          const gloss = await translateToGloss(text)
           if (!gloss) throw new Error('glosa vazia')
           tel('avatar', 'gloss.res', seg, { gloss, words: countWords(gloss) })
           return gloss
@@ -1729,11 +2060,13 @@
       return ref ? Math.max(0, nowMs() - ref.speechEnd) : 0
     }
 
-    let desiredSpeed = SPEED_NORMAL
+    let desiredSpeed = 2
+    let speedBoosted = false
     function chooseSpeed() {
       const projected = lagMs() + backlogMs()
-      if (projected > LAG_UP_MS) desiredSpeed = SPEED_FAST
-      else if (projected < LAG_DOWN_MS) desiredSpeed = SPEED_NORMAL
+      if (projected > LAG_UP_MS) speedBoosted = true
+      else if (projected < LAG_DOWN_MS) speedBoosted = false
+      desiredSpeed = speedBoosted ? speedFast() : speedNormal()
       return desiredSpeed
     }
 
@@ -1770,6 +2103,7 @@
       current = item
       busySince = Infinity
       const gloss = (await (item.gloss || pretranslate(item.text, item.seg))) || item.text
+      if (current !== item) return // motor trocado durante a tradução: o item já voltou para a fila
       const vl = getVLibras()
       if (!vl?.play) {
         busy = false
@@ -1847,6 +2181,7 @@
       line.className = 'cap-line final pending'
       line.dataset.seg = seg
       line.textContent = text
+      window.sinalize?.caption?.push({ kind: 'final', seg, text })
       const later = [...caption.querySelectorAll('.cap-line.final')].find((l) => segOrder(l.dataset.seg) > segOrder(seg))
       caption.insertBefore(line, later || partialLine)
       if (partialLine?.dataset.seg === seg) {
@@ -1868,6 +2203,7 @@
       }
       partialLine.dataset.seg = seg
       partialLine.textContent = text
+      window.sinalize?.caption?.push({ kind: 'partial', seg, text })
     }
 
     function markCaption(seg, state) {
@@ -1875,6 +2211,7 @@
       if (!line) return
       line.classList.remove('pending', 'signing')
       if (state !== 'done') line.classList.add(state)
+      window.sinalize?.caption?.push({ kind: 'state', seg, state })
     }
 
     // Ponte direta DOM: substitui o antigo ipcRenderer.send('translate' / 'partial' / 'recording-status')
@@ -1943,19 +2280,17 @@
     applyTheme(localStorage.getItem(THEME_KEY) || 'light')
 
     // Navegação por Abas (Controle | Glossário / Léxico)
-    const tabBtnControl = document.getElementById('tabBtnControl')
-    const tabBtnGlossary = document.getElementById('tabBtnGlossary')
-    const tabPaneControl = document.getElementById('tabPaneControl')
-    const tabPaneGlossary = document.getElementById('tabPaneGlossary')
+    const TABS = ['Control', 'Glossary', 'Overlay']
 
     function switchTab(tab) {
-      const isGlossary = tab === 'glossary'
-      tabBtnControl.classList.toggle('active', !isGlossary)
-      tabBtnControl.setAttribute('aria-selected', String(!isGlossary))
-      tabBtnGlossary.classList.toggle('active', isGlossary)
-      tabBtnGlossary.setAttribute('aria-selected', String(isGlossary))
-      tabPaneControl.hidden = isGlossary
-      tabPaneGlossary.hidden = !isGlossary
+      for (const name of TABS) {
+        const on = name.toLowerCase() === tab
+        const btn = document.getElementById('tabBtn' + name)
+        btn.classList.toggle('active', on)
+        btn.setAttribute('aria-selected', String(on))
+        document.getElementById('tabPane' + name).hidden = !on
+      }
+      if (tab === 'overlay' && ovState) renderPreview(ovState)
     }
 
     // =========================================================================
@@ -2523,6 +2858,7 @@
       btnMic.classList.add('recording')
       setMicState(LISTENING, 'recording')
       setStatus('Cada pausa na fala envia uma frase ao avatar')
+      if (ovState?.settings.behavior.autoStart && !ovState.active) ovCommand('open')
 
       setAvatarRecordingStatus(true)
     }
@@ -2629,6 +2965,187 @@
       if (!isRecording) startRecording()
       else stopRecording()
     }
+
+    // =========================================================================
+    // 6. MODO OVERLAY — painel de configuração (estado e validação ficam no processo principal)
+    // =========================================================================
+    const ANCHOR_LABELS = {
+      'top-left': 'Superior esquerdo',
+      'top-right': 'Superior direito',
+      'bottom-left': 'Inferior esquerdo',
+      'bottom-right': 'Inferior direito',
+      center: 'Centro',
+      'bottom-center': 'Inferior central',
+      custom: 'Personalizado (arrastado)',
+    }
+    const SHORTCUT_LABELS = {
+      toggleOverlay: 'Ativar/desativar overlay',
+      toggleEdit: 'Alternar modo edição',
+      toggleAvatar: 'Mostrar/ocultar avatar',
+      toggleCaption: 'Mostrar/ocultar legendas',
+      resetLayout: 'Restaurar posições',
+      toggleMic: 'Iniciar/encerrar captura',
+    }
+    const FORMATS = {
+      px: (v) => `${v}px`,
+      pct: (v) => `${Math.round(v * 100)}%`,
+      s: (v) => (v ? `${v / 1000}s` : 'sempre visível'),
+    }
+    const ovApi = window.sinalize?.overlay
+    const ovPreview = document.getElementById('ovPreview')
+    const ovPreset = document.getElementById('ovPreset')
+    const ovDeleteBtn = document.getElementById('ovDeletePreset')
+    let ovCharacter = null
+
+    for (const sel of document.querySelectorAll('.ov-anchors')) {
+      sel.innerHTML = Object.entries(ANCHOR_LABELS)
+        .map(([value, label]) => `<option value="${value}"${value === 'custom' ? ' disabled' : ''}>${label}</option>`)
+        .join('')
+    }
+    document.getElementById('ovShortcuts').innerHTML = Object.entries(SHORTCUT_LABELS)
+      .map(([action, label]) => `
+        <label class="ov-field">${label}
+          <input class="glossary-input" data-set="shortcuts.${action}" spellcheck="false" autocomplete="off"/>
+          <small data-fail="${action}" hidden>Indisponível: em uso por outro app ou inválido</small>
+        </label>`)
+      .join('')
+
+    const getPath = (obj, path) => path.split('.').reduce((o, k) => o?.[k], obj)
+
+    function ovCommand(cmd, arg) {
+      return ovApi?.command(cmd, arg).then(ovApply).catch((e) => setStatus('Overlay: ' + e.message, 'error'))
+    }
+
+    function ovUpdate(patch) {
+      return ovApi?.update(patch).then(ovApply).catch((e) => setStatus('Overlay: ' + e.message, 'error'))
+    }
+
+    // Prévia proporcional do desktop virtual: monitores, avatar e legenda na escala real.
+    function renderPreview(state) {
+      const ds = state.displays
+      const minX = Math.min(...ds.map((d) => d.bounds.x))
+      const minY = Math.min(...ds.map((d) => d.bounds.y))
+      const maxX = Math.max(...ds.map((d) => d.bounds.x + d.bounds.width))
+      const maxY = Math.max(...ds.map((d) => d.bounds.y + d.bounds.height))
+      const scale = (ovPreview.clientWidth || 320) / (maxX - minX)
+      ovPreview.style.height = `${Math.round((maxY - minY) * scale)}px`
+      const box = (b, cls, label) =>
+        `<div class="${cls}" style="left:${(b.x - minX) * scale}px;top:${(b.y - minY) * scale}px;width:${b.width * scale}px;height:${b.height * scale}px">${label}</div>`
+      const s = state.settings
+      ovPreview.innerHTML =
+        ds.map((d) => box(d.bounds, 'ov-mon' + (d.primary ? ' primary' : ''), escapeHtml(`${d.label} · ${Math.round(d.scaleFactor * 100)}%`))).join('') +
+        box(state.bounds.caption, 'ov-el caption' + (s.caption.visible ? '' : ' off'), 'Legenda') +
+        box(state.bounds.avatar, 'ov-el avatar' + (s.avatar.visible ? '' : ' off'), 'Avatar')
+    }
+
+    function syncPresetButtons() {
+      ovDeleteBtn.disabled = ovPreset.selectedOptions[0]?.dataset.builtin !== 'false'
+    }
+
+    function ovApply(state) {
+      if (!state) return
+      ovState = state
+      const s = state.settings
+      setPlayerEngine(state.engine)
+      if (ovCharacter !== s.avatar.character) {
+        ovCharacter = s.avatar.character
+        getVLibras()?.setAvatar?.(ovCharacter)
+      }
+
+      const pill = document.getElementById('ovStatus')
+      pill.textContent = !state.active ? 'Overlay desligado' : state.editing ? 'Overlay ativo · modo edição' : 'Overlay ativo · apresentando'
+      pill.className = 'ov-pill' + (state.active ? (state.editing ? ' edit' : ' on') : '')
+      document.getElementById('ovToggle').textContent = state.active ? 'Fechar overlay' : 'Abrir overlay'
+      const btnEdit = document.getElementById('ovEdit')
+      btnEdit.disabled = !state.active
+      btnEdit.textContent = state.active && !state.editing ? 'Voltar à edição' : 'Bloquear e apresentar'
+      document.getElementById('ovLocked').checked = state.active && !state.editing
+      document.getElementById('ovEditKey').textContent = s.shortcuts.toggleEdit || 'sem atalho'
+
+      for (const sel of document.querySelectorAll('.ov-displays')) {
+        sel.innerHTML = state.displays
+          .map((d) => `<option value="${d.id}">${escapeHtml(d.label)}${d.primary ? ' (principal)' : ''}</option>`)
+          .join('')
+      }
+      for (const el of document.querySelectorAll('[data-set]')) {
+        // Não sobrescreve o campo que o usuário está editando.
+        if (el === document.activeElement && el.type !== 'checkbox' && el.tagName !== 'SELECT') continue
+        const path = el.dataset.set
+        const [group, key] = path.split('.')
+        const value = key === 'displayId' ? state.bounds[group].displayId : getPath(s, path)
+        if (el.type === 'checkbox') el.checked = value
+        else el.value = String(value)
+      }
+      for (const out of document.querySelectorAll('[data-out]')) {
+        const value = getPath(s, out.dataset.out)
+        out.textContent = FORMATS[out.dataset.fmt]?.(value) ?? value
+      }
+      for (const note of document.querySelectorAll('[data-fail]')) {
+        const failed = state.shortcutFailures.includes(note.dataset.fail)
+        note.hidden = !failed
+        note.previousElementSibling.classList.toggle('error', failed)
+      }
+
+      const selected = ovPreset.value
+      ovPreset.innerHTML = state.presets
+        .map((p) => `<option value="${escapeHtml(p.id)}" data-builtin="${p.builtin}">${escapeHtml(p.label)}${p.builtin ? '' : ' (personalizado)'}</option>`)
+        .join('')
+      if (state.presets.some((p) => p.id === selected)) ovPreset.value = selected
+      syncPresetButtons()
+      renderPreview(state)
+    }
+
+    for (const el of document.querySelectorAll('[data-set]')) {
+      const live = el.type === 'range' || el.type === 'color'
+      el.addEventListener(live ? 'input' : 'change', () => {
+        const [group, key] = el.dataset.set.split('.')
+        let value = el.type === 'checkbox' ? el.checked : el.type === 'range' || 'num' in el.dataset ? Number(el.value) : el.value
+        if (group === 'shortcuts') value = value.trim()
+        const patch = { [group]: { [key]: value } }
+        // Trocar ancoragem ou monitor descarta a posição livre arrastada.
+        if (key === 'anchor' || key === 'displayId') Object.assign(patch[group], { x: null, y: null })
+        if (key === 'displayId' && ovState?.settings[group].anchor === 'custom') {
+          patch[group].anchor = group === 'avatar' ? 'bottom-right' : 'bottom-center'
+        }
+        ovUpdate(patch)
+      })
+    }
+
+    document.getElementById('ovLocked').addEventListener('change', (e) => ovCommand('edit', !e.target.checked))
+    ovPreset.addEventListener('change', syncPresetButtons)
+
+    function ovApplyPreset() {
+      if (ovPreset.value) ovCommand('applyPreset', ovPreset.value)
+    }
+
+    function ovDeletePreset() {
+      if (ovPreset.value && confirm(`Excluir o preset "${ovPreset.value}"?`)) ovCommand('deletePreset', ovPreset.value)
+    }
+
+    function ovSavePreset(event) {
+      event.preventDefault()
+      const input = document.getElementById('ovPresetName')
+      const name = input.value.trim()
+      if (!name) return
+      ovCommand('savePreset', name).then(() => {
+        ovPreset.value = name
+        syncPresetButtons()
+        input.value = ''
+        setStatus(`Preset "${name}" salvo`, 'active')
+      })
+    }
+
+    ovApi?.onState(ovApply)
+    ovApi?.onFocus((section) => {
+      switchTab('overlay')
+      document.getElementById(section === 'caption' ? 'ovSecCaption' : 'ovSecAvatar').scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    // Atalho global de captura: funciona mesmo com o PowerPoint em primeiro plano.
+    ovApi?.onShortcut((action) => {
+      if (action === 'toggleMic') toggleMic()
+    })
+    ovApi?.get().then(ovApply)
+    window.addEventListener('resize', () => ovState && renderPreview(ovState))
   </script>
 
 </body>

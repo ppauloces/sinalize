@@ -62,19 +62,32 @@ npm install
 npm.cmd start
 ```
 
-Duas janelas abrem:
-- **Controle** — entrada de voz/texto e frases prontas
-- **Avatar** — animação 3D em Libras com legenda
+A janela do **Studio** reúne o palco do avatar, a legenda e o painel de controle. Modos de exibição:
+- **Studio** — operação completa (voz, texto, frases prontas, glossário)
+- **Telão** — palco e legenda ampliados para projeção
+- **Overlay** — avatar e legendas flutuando sobre PowerPoint, navegador, PDF ou reuniões
+  (aba *Overlay* ou `Ctrl+Alt+Shift+O`; detalhes, validação e limitações em [docs/overlay.md](docs/overlay.md))
+
+```bash
+npm test   # testes de geometria multi-monitor e validação das configurações do overlay
+```
 
 ## 📁 Estrutura
 
 ```
 sinalize/
-├── main.js              # Processo principal Electron, cria janelas e IPC
-├── preload.js           # Expõe API segura para a janela de controle
+├── main.js                  # Processo principal Electron: janela do Studio, protocolo app://, diagnóstico
+├── preload.js               # API segura (window.sinalize) para todas as janelas
+├── main/
+│   ├── overlay-manager.js   # Modo Overlay: janelas flutuantes, monitores, atalhos, IPC validado
+│   ├── overlay-settings.js  # Padrões, presets e validação das configurações do overlay
+│   └── display.js           # Geometria multi-monitor
 ├── renderer/
-│   ├── control.html     # Janela de controle (voz/texto/frases)
-│   └── avatar.html      # Janela do avatar VLibras com legenda
+│   ├── index.html           # Studio (palco, legenda, controle, glossário, aba Overlay)
+│   ├── vlibras-stage.html   # Player VLibras (Unity) sem o widget, fundo transparente
+│   ├── avatar-overlay.html  # Avatar flutuante
+│   └── caption-overlay.html # Legendas flutuantes
+├── test/                    # npm test
 └── package.json
 ```
 

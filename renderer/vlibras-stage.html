@@ -3,108 +3,101 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sinalize — Palco VLibras</title>
+  <title>Sinalize — Player VLibras</title>
   <style>
-    * {
+    html, body {
       margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
       -webkit-user-select: none;
       user-select: none;
     }
 
-    html, body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
       background: transparent;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #vlibras-access-wrapper,
-    [vw-access-button] {
-      display: none !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-    }
-
-    [vw],
-    [vw-plugin-wrapper],
-    .vw-plugin-top-wrapper,
-    #vlibras-app-root {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: 100% !important;
-      max-height: 100% !important;
-      border: none !important;
-      background: transparent !important;
-    }
-
-    /* Centraliza o container interno do VLibras sem interferir nas coordenadas de mouse do player */
-    #vlibras-app {
-      position: relative !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      margin: auto !important;
-      border-radius: 16px !important;
-      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.2) !important;
-      max-width: 96% !important;
-      max-height: 96% !important;
     }
   </style>
 </head>
 <body>
-  <!-- Documento isolado contendo exclusivamente o Widget VLibras (sem nós de texto da UI principal) -->
-  <div vw class="enabled">
-    <div vw-access-button class="active"></div>
-    <div vw-plugin-wrapper>
-      <div class="vw-plugin-top-wrapper"></div>
-    </div>
-  </div>
+  <iframe id="unity" title="Avatar VLibras" tabindex="-1" allowtransparency="true"></iframe>
 
-  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
   <script>
-    new window.VLibras.Widget({
-      rootPath: 'https://vlibras.gov.br/app',
-      avatar: 'icaro',
-      opacity: 1,
-      position: 'R'
+    // Player VLibras sem o widget: o Unity WebGL oficial (vlibras.gov.br) é dirigido pelos mesmos
+    // comandos postMessage que o widget usa (PlayerManager.*). A cena já limpa o framebuffer com
+    // alpha 0 (contexto WebGL 1, alpha: true), então só o personagem fica opaco — ver docs/overlay.md.
+    // Parâmetros: ?avatar=icaro|hosana|guga  &subtitles=1 (glosa desenhada pelo Unity)
+    const UNITY_URL = 'https://vlibras.gov.br/app/unity/index.html?v=7.12.2'
+    const DICTIONARY_URL = 'https://dicionario2.vlibras.gov.br/2018.3.1/WEBGL/'
+    const AVATARS = ['icaro', 'hosana', 'guga']
+    const LOAD_TIMEOUT_MS = 30000
+
+    const params = new URLSearchParams(location.search)
+    const unity = document.getElementById('unity')
+    const send = (object, method, arg) => unity.contentWindow?.postMessage({ type: 'unity', object, method, params: arg }, '*')
+
+    let status = null // null enquanto o Unity carrega; depois idle | playing | paused
+    let speed = null
+    let avatar = AVATARS.includes(params.get('avatar')) ? params.get('avatar') : 'icaro'
+    let loadTimer = null
+    let attempts = 0
+
+    // Mesma superfície que a fila do Studio já usava do widget (status, speed, play, setSpeed).
+    window.vlibras = {
+      get status() { return status },
+      get speed() { return speed },
+      get avatar() { return avatar },
+      play(gloss) {
+        if (status) send('PlayerManager', 'playNow', String(gloss))
+      },
+      setSpeed(n) {
+        speed = n
+        if (status) send('PlayerManager', 'setSlider', n)
+      },
+      setAvatar(name) {
+        if (!AVATARS.includes(name)) return
+        avatar = name
+        if (status) send('PlayerManager', 'Change', name)
+      },
+      stop() {
+        if (status) send('PlayerManager', 'stopAll')
+      },
+    }
+
+    window.addEventListener('message', (e) => {
+      if (e.source !== unity.contentWindow || e.data?.type !== 'unity_event') return
+      if (e.data.event === 'on_load_player') {
+        clearTimeout(loadTimer)
+        send('PlayerManager', 'setBaseUrl', DICTIONARY_URL)
+        send('PlayerManager', 'setSubtitlesState', params.get('subtitles') === '1' ? 1 : 0)
+        if (avatar !== 'icaro') send('PlayerManager', 'Change', avatar)
+        if (speed != null) send('PlayerManager', 'setSlider', speed)
+        status = 'idle'
+      } else if (e.data.event === 'on_playing_state_change' && status && Array.isArray(e.data.data)) {
+        const [playing, paused, , loading] = e.data.data.map((v) => v === 'True')
+        if (paused) status = 'paused'
+        else if (playing) status = 'playing'
+        else if (!loading) status = 'idle'
+      }
     })
 
-    // Abertura automática do widget assim que estiver pronto
-    let widgetOpened = false
-    const waitWidget = setInterval(() => {
-      if (window.VLibrasWidget && typeof window.VLibrasWidget.open === 'function') {
-        window.VLibrasWidget.open()
-        widgetOpened = true
-      }
-      const accessWrapper = document.getElementById('vlibras-access-wrapper')
-      if (accessWrapper && accessWrapper.shadowRoot) {
-        const btn = accessWrapper.shadowRoot.querySelector('#vlibras-button')
-        if (btn) {
-          btn.click()
-          widgetOpened = true
-        }
-      }
-      const accessBtn = document.querySelector('[vw-access-button]')
-      if (accessBtn) {
-        accessBtn.click()
-        widgetOpened = true
-      }
-      if (widgetOpened && (window.plugin?.translate || window.vlibras?.translateAndPlay)) {
-        clearInterval(waitWidget)
-      }
-    }, 400)
+    // Recupera falhas de carregamento (rede/CDN) recarregando o Unity com backoff.
+    function load() {
+      status = null
+      unity.src = UNITY_URL + (attempts ? `&retry=${attempts}` : '')
+      loadTimer = setTimeout(load, Math.min(LOAD_TIMEOUT_MS * 2 ** attempts++, 120000))
+    }
+    load()
 
-    // Encaminha atalhos globais (ESC para sair do Modo Telão, Ctrl+Shift+D para Diagnóstico) para a janela pai
+    // Encaminha atalhos da janela pai quando o foco está no palco (ESC sai do Telão, Ctrl+Shift+D abre o diagnóstico).
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        window.parent?.setTheaterMode?.(false)
-      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+      if (e.key === 'Escape') window.parent?.setTheaterMode?.(false)
+      else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault()
         window.parent?.sinalize?.openDiagnostics?.()
       }
