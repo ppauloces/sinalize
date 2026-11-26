@@ -5,6 +5,108 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sinalize — Controle</title>
   <style>
+    :root {
+      --bg-app: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F1F5F9;
+      --bg-hover: #EFF6FF;
+      --bg-input: #F8FAFC;
+      --bg-input-focus: #FFFFFF;
+      --border-color: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+      --text-muted: #64748B;
+
+      --accent-primary: #0B4F9F;
+      --accent-bright: #2563EB;
+      --accent-hover: #1D4ED8;
+      --accent-gradient: linear-gradient(135deg, #2563EB 0%, #0B4F9F 100%);
+      --accent-gradient-hover: linear-gradient(135deg, #1D4ED8 0%, #093E7E 100%);
+      --accent-soft-bg: #EFF6FF;
+      --accent-soft-hover: #DBEAFE;
+      --accent-soft-border: #BFDBFE;
+      --accent-soft-text: #0B4F9F;
+      --accent-ring: rgba(37, 99, 235, 0.18);
+
+      --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+      --shadow-drawer: 0 10px 25px rgba(15, 23, 42, 0.08);
+      --shadow-primary: 0 4px 12px rgba(11, 79, 159, 0.28);
+      --shadow-primary-hover: 0 6px 16px rgba(37, 99, 235, 0.36);
+
+      --success-bg: #ECFDF5;
+      --success-border: #A7F3D0;
+      --success-text: #047857;
+      --success-dot: #10B981;
+
+      --danger-bg: #FEF2F2;
+      --danger-border: #FECACA;
+      --danger-text: #B91C1C;
+      --danger-dot: #EF4444;
+
+      --warn-bg: #FFFBEB;
+      --warn-border: #FDE68A;
+      --warn-text: #B45309;
+      --warn-dot: #F59E0B;
+
+      --switch-track: #CBD5E1;
+      --scrollbar-thumb: rgba(15, 23, 42, 0.16);
+      --meter-track: #E2E8F0;
+      --disabled-bg: #E2E8F0;
+      --disabled-text: #94A3B8;
+    }
+
+    [data-theme="dark"] {
+      --bg-app: #0F172A;
+      --bg-card: #1E293B;
+      --bg-subtle: #162235;
+      --bg-hover: rgba(59, 130, 246, 0.14);
+      --bg-input: #0F172A;
+      --bg-input-focus: #0B1324;
+      --border-color: #334155;
+      --border-strong: #475569;
+      --text-primary: #F8FAFC;
+      --text-secondary: #CBD5E1;
+      --text-muted: #94A3B8;
+
+      --accent-primary: #3B82F6;
+      --accent-bright: #3B82F6;
+      --accent-hover: #2563EB;
+      --accent-gradient: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+      --accent-gradient-hover: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+      --accent-soft-bg: rgba(59, 130, 246, 0.14);
+      --accent-soft-hover: rgba(59, 130, 246, 0.24);
+      --accent-soft-border: rgba(59, 130, 246, 0.38);
+      --accent-soft-text: #93C5FD;
+      --accent-ring: rgba(59, 130, 246, 0.28);
+
+      --shadow-card: 0 4px 16px rgba(2, 6, 23, 0.3);
+      --shadow-drawer: 0 10px 28px rgba(2, 6, 23, 0.45);
+      --shadow-primary: 0 4px 14px rgba(59, 130, 246, 0.35);
+      --shadow-primary-hover: 0 6px 20px rgba(59, 130, 246, 0.45);
+
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --success-border: rgba(16, 185, 129, 0.32);
+      --success-text: #34D399;
+      --success-dot: #10B981;
+
+      --danger-bg: rgba(239, 68, 68, 0.14);
+      --danger-border: rgba(239, 68, 68, 0.35);
+      --danger-text: #FCA5A5;
+      --danger-dot: #EF4444;
+
+      --warn-bg: rgba(245, 158, 11, 0.14);
+      --warn-border: rgba(245, 158, 11, 0.32);
+      --warn-text: #FCD34D;
+      --warn-dot: #F59E0B;
+
+      --switch-track: #334155;
+      --scrollbar-thumb: rgba(148, 163, 184, 0.24);
+      --meter-track: rgba(148, 163, 184, 0.16);
+      --disabled-bg: #1E293B;
+      --disabled-text: #64748B;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -14,32 +116,41 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #0b0d14;
-      color: #f1f5f9;
-      padding: 16px;
+      background: var(--bg-app);
+      color: var(--text-primary);
+      padding: 14px 16px 16px;
       height: 100vh;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 11px;
       scrollbar-width: thin;
-      scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     body::-webkit-scrollbar {
       width: 6px;
     }
     body::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--scrollbar-thumb);
       border-radius: 9999px;
     }
 
-    /* === Header & Botão de Configurações === */
+    /* === Header, Tema, Configurações & Status do Servidor === */
     .header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 2px;
+      flex-shrink: 0;
+    }
+
+    .header-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 4px;
+      gap: 8px;
     }
 
     .brand-title-wrap {
@@ -48,71 +159,209 @@
       gap: 8px;
     }
 
+    .brand-mark {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--accent-gradient);
+      color: #FFFFFF;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(11, 79, 159, 0.25);
+      flex-shrink: 0;
+    }
+
     h1 {
-      font-size: 1.15rem;
+      font-size: 1.12rem;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 6px;
-      letter-spacing: 0.3px;
+      letter-spacing: -0.01em;
     }
 
     .header-badge {
-      font-size: 0.65rem;
-      font-weight: 600;
+      font-size: 0.64rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.7px;
       padding: 2px 7px;
       border-radius: 6px;
-      background: rgba(124, 58, 237, 0.18);
-      color: #c4b5fd;
-      border: 1px solid rgba(124, 58, 237, 0.3);
+      background: var(--accent-soft-bg);
+      color: var(--accent-soft-text);
+      border: 1px solid var(--accent-soft-border);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .btn-icon {
-      background: #161a27;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: #94a3b8;
-      width: 34px;
-      height: 34px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      width: 32px;
+      height: 32px;
       border-radius: 8px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.2s ease;
+      font-size: 0.95rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
     }
 
     .btn-icon:hover {
-      background: #1e2436;
-      color: #f8fafc;
-      border-color: rgba(124, 58, 237, 0.4);
+      background: var(--bg-hover);
+      color: var(--accent-bright);
+      border-color: var(--accent-soft-border);
+    }
+
+    #btnSettings:hover svg {
       transform: rotate(30deg);
     }
 
+    #btnSettings svg {
+      transition: transform 0.25s ease;
+    }
+
     .btn-icon.active {
-      background: rgba(124, 58, 237, 0.25);
-      border-color: #8b5cf6;
-      color: #c4b5fd;
+      background: var(--accent-soft-bg);
+      border-color: var(--accent-bright);
+      color: var(--accent-bright);
+    }
+
+    /* Barra discreta de status do servidor local (localhost:8000) */
+    .server-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 26px;
+    }
+
+    .server-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 0.71rem;
+      font-weight: 600;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+      max-width: 100%;
+    }
+
+    .server-pill.online {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+      color: var(--success-text);
+    }
+
+    .server-pill.offline {
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+    }
+
+    .server-pill.checking {
+      background: var(--warn-bg);
+      border-color: var(--warn-border);
+      color: var(--warn-text);
+    }
+
+    .server-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .server-pill.online .server-dot {
+      background: var(--success-dot);
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+
+    .server-pill.offline .server-dot {
+      background: var(--danger-dot);
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+
+    .server-pill.checking .server-dot {
+      background: var(--warn-dot);
+      animation: pulse-dot 1.1s infinite ease-in-out;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    .btn-reconnect {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      font-size: 0.71rem;
+      font-weight: 600;
+      font-family: inherit;
+      background: var(--bg-card);
+      color: var(--accent-soft-text);
+      border: 1px solid var(--accent-soft-border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-reconnect:hover:not(:disabled) {
+      background: var(--accent-soft-bg);
+      border-color: var(--accent-bright);
+    }
+
+    .btn-reconnect:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .btn-reconnect[hidden] {
+      display: none;
+    }
+
+    .btn-reconnect.spinning svg {
+      animation: spin-icon 0.8s linear infinite;
+    }
+
+    @keyframes spin-icon {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
     /* === Gaveta de Configurações (Retrátil) === */
     .settings-drawer {
-      background: #131722;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       overflow: hidden;
       transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.3s ease;
-      max-height: 380px;
-      flex-shrink: 0; /* body é flex com altura fixa: sem isso a gaveta é espremida */
+      max-height: 400px;
+      flex-shrink: 0;
       opacity: 1;
       padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      gap: 11px;
+      box-shadow: var(--shadow-drawer);
     }
 
     .settings-drawer.collapsed {
@@ -120,15 +369,16 @@
       opacity: 0;
       padding: 0 14px;
       border-color: transparent;
+      box-shadow: none;
       pointer-events: none;
     }
 
     .drawer-title {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #94a3b8;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -149,31 +399,33 @@
 
     #apiKey, #sttProvider {
       width: 100%;
-      background: #0b0d14;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       padding: 8px 34px 8px 10px;
-      color: #f1f5f9;
+      color: var(--text-primary);
       font-size: 0.8rem;
       font-family: monospace;
       outline: none;
-      transition: all 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
     }
 
     #sttProvider {
       padding-right: 10px;
       font-family: inherit;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+      cursor: pointer;
     }
 
     #apiKey:focus, #sttProvider:focus {
-      border-color: #8b5cf6;
-      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+      background: var(--bg-input-focus);
+      border-color: var(--accent-bright);
+      box-shadow: 0 0 0 3px var(--accent-ring);
     }
 
     #apiKey.attention {
-      border-color: #ef4444 !important;
-      box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
+      border-color: var(--danger-dot) !important;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
       animation: shake 0.35s ease;
     }
 
@@ -188,7 +440,7 @@
       right: 8px;
       background: transparent;
       border: none;
-      color: #64748b;
+      color: var(--text-muted);
       cursor: pointer;
       font-size: 0.85rem;
       display: flex;
@@ -198,47 +450,53 @@
     }
 
     .toggle-pass-btn:hover {
-      color: #94a3b8;
+      color: var(--text-primary);
     }
 
     .diag-link {
-      background: none;
-      border: 1px dashed rgba(255, 255, 255, 0.12);
+      background: var(--bg-subtle);
+      border: 1px dashed var(--border-strong);
       border-radius: 8px;
-      color: #94a3b8;
+      color: var(--text-secondary);
       font-size: 0.75rem;
-      padding: 6px 10px;
+      font-weight: 500;
+      font-family: inherit;
+      padding: 7px 10px;
       cursor: pointer;
       text-align: left;
+      transition: all 0.2s ease;
     }
 
     .diag-link:hover {
-      color: #e2e8f0;
-      border-color: #8b5cf6;
+      color: var(--accent-soft-text);
+      border-color: var(--accent-bright);
+      background: var(--accent-soft-bg);
     }
 
     .diag-link kbd {
       float: right;
       font-family: monospace;
       font-size: 0.7rem;
-      color: #64748b;
+      color: var(--text-muted);
     }
 
     .key-status {
-      font-size: 0.7rem;
+      font-size: 0.69rem;
       font-weight: 600;
-      padding: 5px 9px;
+      padding: 3px 8px;
       border-radius: 6px;
-      background: #181d2a;
-      color: #94a3b8;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
       white-space: nowrap;
+      text-transform: none;
+      letter-spacing: 0;
     }
 
     .key-status.ok {
-      background: rgba(16, 185, 129, 0.12);
-      color: #34d399;
-      border-color: rgba(16, 185, 129, 0.3);
+      background: var(--success-bg);
+      color: var(--success-text);
+      border-color: var(--success-border);
     }
 
     /* Switch de Always on Top */
@@ -246,13 +504,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-top: 4px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
     }
 
     .setting-label {
       font-size: 0.8rem;
-      color: #e2e8f0;
+      font-weight: 500;
+      color: var(--text-primary);
       display: flex;
       flex-direction: column;
       gap: 2px;
@@ -260,7 +519,8 @@
 
     .setting-label small {
       font-size: 0.68rem;
-      color: #64748b;
+      font-weight: 400;
+      color: var(--text-muted);
     }
 
     .switch {
@@ -268,6 +528,7 @@
       display: inline-block;
       width: 38px;
       height: 22px;
+      flex-shrink: 0;
     }
 
     .switch input {
@@ -280,7 +541,7 @@
       position: absolute;
       cursor: pointer;
       inset: 0;
-      background-color: #272e42;
+      background-color: var(--switch-track);
       border-radius: 34px;
       transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -292,13 +553,14 @@
       width: 16px;
       left: 3px;
       bottom: 3px;
-      background-color: white;
+      background-color: #FFFFFF;
       border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
       transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     input:checked + .slider {
-      background-color: #7c3aed;
+      background-color: var(--accent-bright);
     }
 
     input:checked + .slider:before {
@@ -307,47 +569,47 @@
 
     /* === Cards & Seções Comuns === */
     .section-label {
-      font-size: 0.68rem;
+      font-size: 0.69rem;
       font-weight: 700;
-      color: #94a3b8;
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-top: 2px;
+      letter-spacing: 0.75px;
+      margin-top: 1px;
       margin-bottom: -4px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-shrink: 0;
     }
 
-    .card {
-      background: #131722;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    .section-hint {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.69rem;
     }
 
     /* === Seção de Voz (Whisper) === */
     .voice-area {
-      background: #131722;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 12px;
+      padding: 13px;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      box-shadow: var(--shadow-card);
+      flex-shrink: 0;
     }
 
     #transcript {
-      font-size: 0.88rem;
-      color: #e2e8f0;
-      min-height: 28px;
-      line-height: 1.35;
+      font-size: 0.87rem;
+      color: var(--text-primary);
+      min-height: 30px;
+      line-height: 1.4;
       word-break: break-word;
-      white-space: pre-line; /* frase final + parcial em linhas separadas */
+      white-space: pre-line;
     }
 
     /* Estado da fila do avatar (atraso) com esvaziamento manual */
@@ -356,20 +618,36 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      font-size: 0.75rem;
-      color: #cbd5e1;
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 9px;
       font-variant-numeric: tabular-nums;
     }
-    .avatar-state.warn { color: #fbbf24; }
-    .avatar-state.high { color: #f87171; }
+    .avatar-state[hidden] { display: none; }
+    .avatar-state.warn {
+      background: var(--warn-bg);
+      border-color: var(--warn-border);
+      color: var(--warn-text);
+    }
+    .avatar-state.high {
+      background: var(--danger-bg);
+      border-color: var(--danger-border);
+      color: var(--danger-text);
+    }
     .avatar-state button {
-      background: none;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: var(--bg-card);
+      border: 1px solid currentColor;
       border-radius: 6px;
       color: inherit;
       font-size: 0.7rem;
+      font-weight: 600;
+      font-family: inherit;
       padding: 3px 8px;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .mic-footer {
@@ -380,21 +658,21 @@
     }
 
     #micState {
-      font-size: 0.72rem;
-      color: #64748b;
+      font-size: 0.73rem;
+      color: var(--text-muted);
       font-weight: 500;
     }
 
-    #micState.recording { color: #f87171; font-weight: 600; }
-    #micState.processing { color: #fbbf24; font-weight: 600; }
-    #micState.ok { color: #34d399; font-weight: 600; }
-    #micState.error { color: #f87171; font-weight: 600; }
+    #micState.recording { color: var(--danger-dot); font-weight: 600; }
+    #micState.processing { color: var(--warn-text); font-weight: 600; }
+    #micState.ok { color: var(--success-text); font-weight: 600; }
+    #micState.error { color: var(--danger-text); font-weight: 600; }
 
     /* Barra visual de nível de áudio (Web Audio API) */
     .audio-meter-wrap {
       display: none;
       height: 6px;
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--meter-track);
       border-radius: 9999px;
       overflow: hidden;
       margin-top: -2px;
@@ -407,32 +685,34 @@
     .audio-meter-fill {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #10b981 0%, #fbbf24 70%, #ef4444 100%);
+      background: linear-gradient(90deg, #2563EB 0%, #10B981 55%, #F59E0B 82%, #EF4444 100%);
       border-radius: 9999px;
       transition: width 0.06s ease;
     }
 
-    /* Botão Principal de Microfone */
+    /* Botão Principal de Microfone (CTA Primário — destaque máximo) */
     #btnMic {
-      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-      color: #ffffff;
-      padding: 12px;
+      background: var(--accent-gradient);
+      color: #FFFFFF;
+      padding: 13px 16px;
       border: none;
       border-radius: 10px;
-      font-size: 0.92rem;
+      font-size: 0.94rem;
       font-weight: 600;
+      font-family: inherit;
+      letter-spacing: 0.01em;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      gap: 9px;
+      box-shadow: var(--shadow-primary);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     #btnMic:hover:not(:disabled) {
-      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-      box-shadow: 0 6px 18px rgba(124, 58, 237, 0.45);
+      background: var(--accent-gradient-hover);
+      box-shadow: var(--shadow-primary-hover);
       transform: translateY(-1px);
     }
 
@@ -442,23 +722,23 @@
 
     /* Estado Ativo Gravando */
     #btnMic.recording {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5) !important;
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+      box-shadow: 0 4px 18px rgba(239, 68, 68, 0.42) !important;
       animation: pulse-mic 1.4s infinite ease-in-out;
     }
 
     @keyframes pulse-mic {
       0%, 100% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
       }
       50% {
-        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+        box-shadow: 0 0 0 9px rgba(239, 68, 68, 0);
       }
     }
 
     #btnMic:disabled {
-      background: #202638;
-      color: #64748b;
+      background: var(--disabled-bg);
+      color: var(--disabled-text);
       cursor: not-allowed;
       box-shadow: none;
       transform: none;
@@ -469,15 +749,16 @@
     .quick-phrases {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 7px;
+      flex-shrink: 0;
     }
 
     .phrase-btn {
-      background: #131722;
-      color: #e2e8f0;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
       border-radius: 9px;
-      padding: 9px 10px;
+      padding: 8px 10px;
       font-size: 0.8rem;
       font-weight: 500;
       cursor: pointer;
@@ -486,14 +767,14 @@
       align-items: center;
       gap: 8px;
       text-align: left;
-      transition: all 0.2s ease;
-      position: relative;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+      transition: all 0.18s ease;
     }
 
     .phrase-btn:hover {
-      background: #1e2436;
-      border-color: rgba(139, 92, 246, 0.4);
-      color: #ffffff;
+      background: var(--bg-hover);
+      border-color: var(--accent-soft-border);
+      color: var(--accent-soft-text);
       transform: translateY(-1px);
     }
 
@@ -506,15 +787,22 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
-      color: #94a3b8;
-      font-size: 0.65rem;
+      width: 19px;
+      height: 19px;
+      border-radius: 5px;
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      font-size: 0.66rem;
       font-weight: 700;
       flex-shrink: 0;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      transition: all 0.18s ease;
+    }
+
+    .phrase-btn:hover .key-badge {
+      background: var(--accent-soft-hover);
+      border-color: var(--accent-soft-border);
+      color: var(--accent-soft-text);
     }
 
     .phrase-text {
@@ -525,32 +813,39 @@
 
     /* === Texto Manual === */
     .input-card {
-      background: #131722;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 9px;
+      box-shadow: var(--shadow-card);
+      flex-shrink: 0;
     }
 
     #input {
-      background: #0b0d14;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 0.88rem;
-      color: #f8fafc;
+      padding: 9px 11px;
+      font-size: 0.87rem;
+      color: var(--text-primary);
       resize: none;
       font-family: inherit;
       outline: none;
-      min-height: 54px;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      min-height: 52px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    #input::placeholder {
+      color: var(--text-muted);
     }
 
     #input:focus {
-      border-color: #8b5cf6;
-      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+      background: var(--bg-input-focus);
+      border-color: var(--accent-bright);
+      box-shadow: 0 0 0 3px var(--accent-ring);
     }
 
     .controls {
@@ -558,57 +853,66 @@
       gap: 8px;
     }
 
+    /* Botão Secundário "Traduzir" — não compete com o CTA primário de gravação */
     #btnSend {
       flex: 1;
-      padding: 10px;
-      border: none;
+      padding: 9px 14px;
+      border: 1.5px solid var(--accent-soft-border);
       border-radius: 8px;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      background: #7c3aed;
-      color: white;
+      background: var(--accent-soft-bg);
+      color: var(--accent-soft-text);
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.2s ease;
+      transition: all 0.18s ease;
     }
 
     #btnSend:hover {
-      background: #8b5cf6;
-      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+      background: var(--accent-soft-hover);
+      border-color: var(--accent-bright);
       transform: translateY(-1px);
     }
 
+    #btnSend:active {
+      transform: translateY(0);
+    }
+
     #btnClear {
-      background: #1c2232;
-      color: #94a3b8;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 9px 13px;
       cursor: pointer;
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.18s ease;
     }
 
     #btnClear:hover {
-      background: #252d42;
-      color: #f1f5f9;
-      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
     }
 
     /* === Histórico de Últimas Traduções === */
     .recent-section {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
+      flex-shrink: 0;
     }
 
     .recent-list {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .recent-item {
@@ -618,18 +922,18 @@
       gap: 8px;
       padding: 6px 10px;
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.05);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       font-size: 0.78rem;
-      color: #cbd5e1;
+      color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.18s ease;
     }
 
     .recent-item:hover {
-      background: rgba(124, 58, 237, 0.14);
-      border-color: rgba(124, 58, 237, 0.3);
-      color: #ffffff;
+      background: var(--accent-soft-bg);
+      border-color: var(--accent-soft-border);
+      color: var(--accent-soft-text);
       transform: translateX(2px);
     }
 
@@ -642,50 +946,89 @@
 
     .recent-item-icon {
       font-size: 0.72rem;
-      color: #8b5cf6;
-      opacity: 0.8;
+      color: var(--accent-bright);
+      opacity: 0.85;
       flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
     }
 
     .recent-empty {
-      font-size: 0.72rem;
-      color: #475569;
+      font-size: 0.73rem;
+      color: var(--text-muted);
       text-align: center;
-      padding: 6px;
+      padding: 8px 6px;
       font-style: italic;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-color);
+      border-radius: 8px;
     }
 
-    /* === Barra de Status do Rodapé === */
+    /* === Barra de Status do Rodapé (Feedback Operacional) === */
     #status {
-      font-size: 0.74rem;
-      color: #64748b;
+      font-size: 0.73rem;
+      color: var(--text-muted);
       text-align: center;
-      min-height: 18px;
+      min-height: 20px;
+      line-height: 1.35;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding-top: 2px;
+      padding: 2px 4px 4px;
+      flex-shrink: 0;
       transition: color 0.2s ease;
     }
 
-    #status.active { color: #34d399; font-weight: 500; }
-    #status.error { color: #f87171; font-weight: 500; }
+    #status.active { color: var(--accent-soft-text); font-weight: 500; }
+    #status.error { color: var(--danger-text); font-weight: 500; }
   </style>
 </head>
 <body>
 
   <!-- Cabeçalho Principal -->
   <header class="header">
-    <div class="brand-title-wrap">
-      <h1>Sinalize</h1>
-      <span class="header-badge">Controle</span>
+    <div class="header-top">
+      <div class="brand-title-wrap">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path>
+            <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path>
+            <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path>
+            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
+          </svg>
+        </span>
+        <h1>Sinalize</h1>
+        <span class="header-badge">Controle</span>
+      </div>
+      <div class="header-actions">
+        <button id="btnTheme" class="btn-icon" type="button" title="Alternar para tema escuro" aria-label="Alternar tema claro e escuro" onclick="toggleTheme()">
+          <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <button id="btnSettings" class="btn-icon" type="button" title="Configurações (API e Janela)" aria-label="Abrir configurações" onclick="toggleSettings()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
     </div>
-    <button id="btnSettings" class="btn-icon" title="Configurações (API e Janela)" onclick="toggleSettings()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-      </svg>
-    </button>
+
+    <!-- Indicador de conexão com o servidor local (localhost:8000) -->
+    <div class="server-bar">
+      <div id="serverPill" class="server-pill checking" title="Status do servidor local de transcrição (http://localhost:8000)">
+        <span class="server-dot" aria-hidden="true"></span>
+        <span id="serverPillText">localhost:8000 · Verificando...</span>
+      </div>
+      <button id="btnReconnect" class="btn-reconnect" type="button" onclick="checkLocalServer(true)" hidden title="Tentar reconectar a http://localhost:8000">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        <span>Reconectar</span>
+      </button>
+    </div>
   </header>
 
   <!-- Gaveta Retrátil de Configurações -->
@@ -743,9 +1086,9 @@
       <span id="avatarStateText"></span>
       <button type="button" onclick="flushAvatarQueue()" title="Remove as frases que aguardam sinalização. Elas continuam na legenda e ficam registradas no diagnóstico.">Esvaziar fila</button>
     </div>
-    <button id="btnMic" onclick="toggleMic()">
+    <button id="btnMic" type="button" onclick="toggleMic()">
       <span id="btnMicIcon" class="btn-mic-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
           <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
           <line x1="12" y1="19" x2="12" y2="22"></line>
@@ -758,30 +1101,30 @@
   <!-- Frases Prontas com Atalhos Numéricos -->
   <div class="section-label">
     <span>Frases Prontas</span>
-    <small style="color: #64748b; font-weight: 400; text-transform: none;">Atalhos [1-6]</small>
+    <small class="section-hint">Atalhos [1-6]</small>
   </div>
   <section class="quick-phrases">
-    <button class="phrase-btn" onclick="sendPhrase('Olá, bom dia')">
+    <button class="phrase-btn" type="button" onclick="sendPhrase('Olá, bom dia')">
       <span class="key-badge">1</span>
       <span class="phrase-text">Olá, bom dia</span>
     </button>
-    <button class="phrase-btn" onclick="sendPhrase('Tudo bem com você')">
+    <button class="phrase-btn" type="button" onclick="sendPhrase('Tudo bem com você')">
       <span class="key-badge">2</span>
       <span class="phrase-text">Tudo bem com você</span>
     </button>
-    <button class="phrase-btn" onclick="sendPhrase('Muito obrigado')">
+    <button class="phrase-btn" type="button" onclick="sendPhrase('Muito obrigado')">
       <span class="key-badge">3</span>
       <span class="phrase-text">Muito obrigado</span>
     </button>
-    <button class="phrase-btn" onclick="sendPhrase('Como você está')">
+    <button class="phrase-btn" type="button" onclick="sendPhrase('Como você está')">
       <span class="key-badge">4</span>
       <span class="phrase-text">Como você está</span>
     </button>
-    <button class="phrase-btn" onclick="sendPhrase('Bem vindo')">
+    <button class="phrase-btn" type="button" onclick="sendPhrase('Bem vindo')">
       <span class="key-badge">5</span>
       <span class="phrase-text">Bem vindo</span>
     </button>
-    <button class="phrase-btn" onclick="sendPhrase('Sim')">
+    <button class="phrase-btn" type="button" onclick="sendPhrase('Sim')">
       <span class="key-badge">6</span>
       <span class="phrase-text">Sim</span>
     </button>
@@ -790,13 +1133,19 @@
   <!-- Entrada de Texto Manual -->
   <div class="section-label">
     <span>Texto Manual</span>
-    <small style="color: #64748b; font-weight: 400; text-transform: none;">Ctrl+Enter envia</small>
+    <small class="section-hint">Ctrl+Enter envia</small>
   </div>
   <section class="input-card">
     <textarea id="input" placeholder="Digite uma frase para sinalizar..."></textarea>
     <div class="controls">
-      <button id="btnSend" onclick="sendInput()">Traduzir</button>
-      <button id="btnClear" onclick="clearInput()" title="Limpar campo">
+      <button id="btnSend" type="button" onclick="sendInput()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+        <span>Traduzir</span>
+      </button>
+      <button id="btnClear" type="button" onclick="clearInput()" title="Limpar campo">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 6h18"></path>
           <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
@@ -832,10 +1181,89 @@
     const keyStatus = document.getElementById('keyStatus')
     const settingsDrawer = document.getElementById('settingsDrawer')
     const btnSettings = document.getElementById('btnSettings')
+    const btnTheme = document.getElementById('btnTheme')
+    const themeIcon = document.getElementById('themeIcon')
+    const serverPill = document.getElementById('serverPill')
+    const serverPillText = document.getElementById('serverPillText')
+    const btnReconnect = document.getElementById('btnReconnect')
     const toggleAlwaysTop = document.getElementById('toggleAlwaysTop')
     const audioMeterWrap = document.getElementById('audioMeterWrap')
     const meterBarFill = document.getElementById('meterBarFill')
     const recentList = document.getElementById('recentList')
+
+    // === Tema Claro (padrão) / Dark Mode ===
+    const THEME_KEY = 'sinalize_theme'
+    const ICON_MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'
+    const ICON_SUN = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>'
+
+    function applyTheme(theme) {
+      const isDark = theme === 'dark'
+      if (isDark) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      } else {
+        document.documentElement.removeAttribute('data-theme')
+      }
+      themeIcon.innerHTML = isDark ? ICON_SUN : ICON_MOON
+      btnTheme.title = isDark ? 'Alternar para tema claro' : 'Alternar para tema escuro'
+      btnTheme.setAttribute('aria-pressed', String(isDark))
+    }
+
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'
+      localStorage.setItem(THEME_KEY, next)
+      applyTheme(next)
+    }
+
+    applyTheme(localStorage.getItem(THEME_KEY) || 'light')
+
+    // === Status do Servidor Local (localhost:8000) no Cabeçalho ===
+    const LOCAL_SERVER_HEALTH_URL = 'http://localhost:8000/health'
+    let checkingServer = false
+
+    function setServerStatus(state) {
+      serverPill.className = 'server-pill ' + state
+      btnReconnect.classList.toggle('spinning', state === 'checking')
+      btnReconnect.disabled = state === 'checking'
+
+      if (state === 'online') {
+        serverPillText.textContent = 'localhost:8000 · Online'
+        btnReconnect.hidden = true
+      } else if (state === 'checking') {
+        serverPillText.textContent = 'localhost:8000 · Reconectando...'
+        btnReconnect.hidden = false
+      } else {
+        serverPillText.textContent = 'localhost:8000 · Offline'
+        btnReconnect.hidden = false
+      }
+    }
+
+    async function checkLocalServer(manual = false) {
+      if (checkingServer) return
+      checkingServer = true
+      if (manual) setServerStatus('checking')
+
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 2500)
+      try {
+        const res = await fetch(LOCAL_SERVER_HEALTH_URL, {
+          method: 'GET',
+          cache: 'no-store',
+          signal: controller.signal
+        })
+        setServerStatus(res.status < 500 ? 'online' : 'offline')
+      } catch {
+        setServerStatus('offline')
+      } finally {
+        clearTimeout(timer)
+        checkingServer = false
+      }
+    }
+
+    // Verificação inicial e periódica discreta da conexão com localhost:8000
+    checkLocalServer(false)
+    setInterval(() => {
+      if (!isRecording) checkLocalServer(false)
+    }, 15000)
 
     // Lista ordenada de frases prontas correspondente aos atalhos 1-6
     const phraseShortcutList = [
@@ -866,6 +1294,7 @@
     sttProvider.addEventListener('change', () => {
       localStorage.setItem(PROVIDER_KEY, sttProvider.value)
       refreshKeyStatus()
+      if (sttProvider.value === 'local') checkLocalServer(true)
     })
 
     function toggleSettings() {
@@ -954,6 +1383,15 @@
       renderRecentTranslations()
     }
 
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    }
+
     function renderRecentTranslations() {
       if (recentHistory.length === 0) {
         recentList.innerHTML = '<div class="recent-empty">Nenhuma tradução recente ainda</div>'
@@ -962,9 +1400,9 @@
 
       recentList.innerHTML = recentHistory
         .map(
-          (item) => `
-          <div class="recent-item" onclick="send('${item.replace(/'/g, "\\'")}')" title="Clique para reenviar">
-            <span class="recent-item-text">${item}</span>
+          (item, idx) => `
+          <div class="recent-item" onclick="send(recentHistory[${idx}])" title="Clique para reenviar">
+            <span class="recent-item-text">${escapeHtml(item)}</span>
             <span class="recent-item-icon">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="1 4 1 10 7 10"></polyline>
@@ -1325,6 +1763,7 @@
         }
 
         const ms = Math.round(nowMs() - t0)
+        if (!p.needsKey) setServerStatus('online')
         if (!text) {
           tel('final.empty', segId, { ms, audioMs })
           setMicState(isRecording ? LISTENING : 'Nenhum texto reconhecido', isRecording ? 'recording' : undefined)
@@ -1339,8 +1778,14 @@
       } catch (e) {
         console.error('fetch falhou:', e)
         const timedOut = e.name === 'AbortError' || e.message === 'timeout'
-        setMicState(timedOut ? 'Transcrição demorou demais (frase perdida)' : 'Erro de conexão', 'error')
-        setStatus(p.needsKey ? 'Sem conexão com a OpenAI' : 'Servidor local fora do ar (localhost:8000)', 'error')
+        if (!p.needsKey) {
+          setServerStatus('offline')
+          setMicState(timedOut ? 'Transcrição demorou demais (frase perdida)' : 'Servidor local indisponível', 'error')
+          setStatus('Pronto')
+        } else {
+          setMicState(timedOut ? 'Transcrição demorou demais (frase perdida)' : 'Erro de conexão', 'error')
+          setStatus('Sem conexão com a OpenAI', 'error')
+        }
       } finally {
         finalsInFlight--
       }

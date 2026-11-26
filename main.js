@@ -114,7 +114,7 @@ async function createWindows() {
     title: 'Sinalize — Controle',
     resizable: true,
     autoHideMenuBar: true,
-    backgroundColor: '#0b0d14',
+    backgroundColor: '#F8FAFC',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
