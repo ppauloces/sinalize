@@ -105,7 +105,8 @@
       border-radius: 12px;
       overflow: hidden;
       transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding 0.3s ease;
-      max-height: 280px;
+      max-height: 380px;
+      flex-shrink: 0; /* body é flex com altura fixa: sem isso a gaveta é espremida */
       opacity: 1;
       padding: 14px;
       display: flex;
@@ -146,7 +147,7 @@
       align-items: center;
     }
 
-    #apiKey {
+    #apiKey, #sttProvider {
       width: 100%;
       background: #0b0d14;
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -159,7 +160,13 @@
       transition: all 0.2s ease;
     }
 
-    #apiKey:focus {
+    #sttProvider {
+      padding-right: 10px;
+      font-family: inherit;
+      margin-bottom: 4px;
+    }
+
+    #apiKey:focus, #sttProvider:focus {
       border-color: #8b5cf6;
       box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
     }
@@ -192,6 +199,29 @@
 
     .toggle-pass-btn:hover {
       color: #94a3b8;
+    }
+
+    .diag-link {
+      background: none;
+      border: 1px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .diag-link:hover {
+      color: #e2e8f0;
+      border-color: #8b5cf6;
+    }
+
+    .diag-link kbd {
+      float: right;
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: #64748b;
     }
 
     .key-status {
@@ -317,6 +347,29 @@
       min-height: 28px;
       line-height: 1.35;
       word-break: break-word;
+      white-space: pre-line; /* frase final + parcial em linhas separadas */
+    }
+
+    /* Estado da fila do avatar (atraso) com esvaziamento manual */
+    .avatar-state {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
+    .avatar-state.warn { color: #fbbf24; }
+    .avatar-state.high { color: #f87171; }
+    .avatar-state button {
+      background: none;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: inherit;
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      cursor: pointer;
     }
 
     .mic-footer {
@@ -638,7 +691,14 @@
   <!-- Gaveta Retrátil de Configurações -->
   <section id="settingsDrawer" class="settings-drawer collapsed">
     <div class="drawer-title">
-      <span>Chave OpenAI (Whisper)</span>
+      <span>Transcrição de voz</span>
+    </div>
+    <select id="sttProvider">
+      <option value="openai">OpenAI (API, pago)</option>
+      <option value="local">Local (speaches em localhost:8000)</option>
+    </select>
+    <div class="drawer-title">
+      <span>Chave OpenAI</span>
       <span id="keyStatus" class="key-status">Sem chave</span>
     </div>
     <div id="apiKeyWrap">
@@ -662,19 +722,26 @@
         <span class="slider"></span>
       </label>
     </div>
+    <button type="button" class="diag-link" onclick="window.sinalize.openDiagnostics()">
+      Painel de diagnóstico <kbd>Ctrl+Shift+D</kbd>
+    </button>
   </section>
 
   <!-- Área de Captura de Voz -->
   <div class="section-label">
-    <span>Voz (Whisper)</span>
+    <span>Voz</span>
   </div>
   <section class="voice-area">
-    <div id="transcript">Clique no microfone e fale uma frase...</div>
+    <div id="transcript">Clique no microfone e fale normalmente — cada pausa envia uma frase...</div>
     <div class="audio-meter-wrap" id="audioMeterWrap">
       <div class="audio-meter-fill" id="meterBarFill"></div>
     </div>
     <div class="mic-footer">
       <div id="micState">Aguardando gravação</div>
+    </div>
+    <div id="avatarState" class="avatar-state" hidden>
+      <span id="avatarStateText"></span>
+      <button type="button" onclick="flushAvatarQueue()" title="Remove as frases que aguardam sinalização. Elas continuam na legenda e ficam registradas no diagnóstico.">Esvaziar fila</button>
     </div>
     <button id="btnMic" onclick="toggleMic()">
       <span id="btnMicIcon" class="btn-mic-icon">
@@ -761,6 +828,7 @@
     const btnMicIcon = document.getElementById('btnMicIcon')
     const btnMicText = document.getElementById('btnMicText')
     const apiKeyInput = document.getElementById('apiKey')
+    const sttProvider = document.getElementById('sttProvider')
     const keyStatus = document.getElementById('keyStatus')
     const settingsDrawer = document.getElementById('settingsDrawer')
     const btnSettings = document.getElementById('btnSettings')
@@ -785,6 +853,21 @@
     // === Configurações & Gaveta Retrátil ===
     const STORAGE_KEY = 'sinalize_openai_key'
 
+    // Servidores de transcrição (mesma API /v1/audio/transcriptions da OpenAI)
+    const STT_PROVIDERS = {
+      openai: { url: 'https://api.openai.com/v1/audio/transcriptions', model: 'gpt-4o-mini-transcribe', needsKey: true },
+      // docker run -d -p 8000:8000 ghcr.io/speaches-ai/speaches:latest-cpu
+      local: { url: 'http://localhost:8000/v1/audio/transcriptions', model: 'Systran/faster-whisper-small', needsKey: false }
+    }
+    const PROVIDER_KEY = 'sinalize_stt_provider'
+    const provider = () => STT_PROVIDERS[sttProvider.value] || STT_PROVIDERS.openai
+
+    sttProvider.value = localStorage.getItem(PROVIDER_KEY) || 'openai'
+    sttProvider.addEventListener('change', () => {
+      localStorage.setItem(PROVIDER_KEY, sttProvider.value)
+      refreshKeyStatus()
+    })
+
     function toggleSettings() {
       const isCollapsed = settingsDrawer.classList.toggle('collapsed')
       btnSettings.classList.toggle('active', !isCollapsed)
@@ -807,7 +890,10 @@
 
     function refreshKeyStatus() {
       const k = apiKeyInput.value.trim()
-      if (k.startsWith('sk-')) {
+      if (!provider().needsKey) {
+        keyStatus.textContent = '● Local, sem chave'
+        keyStatus.className = 'key-status ok'
+      } else if (k.startsWith('sk-')) {
         keyStatus.textContent = '● Configurada'
         keyStatus.className = 'key-status ok'
       } else {
@@ -891,12 +977,26 @@
         .join('')
     }
 
+    // === Telemetria (painel de diagnóstico: Ctrl+Shift+D) ===
+    // Relógio de alta resolução comparável entre as janelas (ver telemetry.js)
+    const nowMs = () => performance.timeOrigin + performance.now()
+    const SESSION = Math.random().toString(36).slice(2, 6)
+    let segCounter = 0
+    const newSegId = (kind) => `${kind}-${SESSION}-${++segCounter}`
+    const countWords = (s) => ((s || '').match(/\S+/g) || []).length
+    function tel(type, seg, data) {
+      window.sinalize?.telemetry?.({ t: nowMs(), src: 'control', type, seg, data })
+    }
+
     // === Envio de Tradução ===
-    function send(text) {
+    // segId vem da voz; texto digitado/frases prontas ganham um id próprio
+    // speechEnd: quando a fala terminou (base do indicador de atraso do avatar)
+    function send(text, segId = newSegId('txt'), speechEnd = nowMs()) {
       const clean = (text || '').trim()
       if (!clean) return
 
-      window.sinalize.translate(clean)
+      tel('sent', segId, { text: clean, words: countWords(clean) })
+      window.sinalize.translate(clean, { seg: segId, speechEnd })
       setStatus('Traduzindo: "' + clean + '"', 'active')
       addRecentTranslation(clean)
     }
@@ -930,6 +1030,12 @@
 
     // Atalhos numéricos globais [1-6] para Frases Prontas
     window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        window.sinalize?.openDiagnostics?.()
+        return
+      }
+
       // Ignora se estiver digitando no input ou na apiKey
       if (document.activeElement === input || document.activeElement === apiKeyInput) {
         return
@@ -942,13 +1048,13 @@
       }
     })
 
-    // === Visualizador de Áudio (Web Audio API) ===
+    // === Medidor de Áudio + detecção de fala (Web Audio API) ===
     let audioContext = null
     let analyserNode = null
     let audioSourceNode = null
-    let audioAnimFrame = null
+    let meterTimer = null
 
-    function startAudioMeter(stream) {
+    function startAudioMeter(stream, onLevel) {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext
         audioContext = new AudioCtx()
@@ -962,30 +1068,26 @@
         const freqData = new Uint8Array(analyserNode.frequencyBinCount)
         audioMeterWrap.classList.add('active')
 
-        function renderMeter() {
-          if (!isRecording) return
+        // setInterval (não requestAnimationFrame): segue rodando com a janela minimizada
+        meterTimer = setInterval(() => {
           analyserNode.getByteFrequencyData(freqData)
           let sum = 0
           for (let i = 0; i < freqData.length; i++) {
             sum += freqData[i]
           }
           const avg = sum / freqData.length
-          const percent = Math.min(100, Math.round((avg / 100) * 100))
-          meterBarFill.style.width = Math.max(2, percent) + '%'
-
-          audioAnimFrame = requestAnimationFrame(renderMeter)
-        }
-        renderMeter()
+          meterBarFill.style.width = Math.max(2, Math.min(100, Math.round(avg))) + '%'
+          onLevel(avg)
+        }, 50)
       } catch (err) {
         console.warn('Web Audio Meter não disponível:', err)
+        heardVoice = true // sem detecção de fala: grava tudo num segmento só, enviado ao parar
       }
     }
 
     function stopAudioMeter() {
-      if (audioAnimFrame) {
-        cancelAnimationFrame(audioAnimFrame)
-        audioAnimFrame = null
-      }
+      clearInterval(meterTimer)
+      meterTimer = null
       audioMeterWrap.classList.remove('active')
       meterBarFill.style.width = '0%'
 
@@ -999,17 +1101,118 @@
       }
     }
 
-    // === Gravação e Transcrição com Whisper ===
-    let mediaRecorder = null
+    // === Gravação contínua: um segmento por frase, cortado nas pausas da fala ===
+    // Cada segmento vira um webm completo, transcrito e enviado ao avatar em ordem.
+    const MIME = 'audio/webm;codecs=opus'
+    const VAD_LEVEL = 18         // volume médio (0-255) que conta como fala — ajuste por microfone/sala
+    const SILENCE_MS = 700       // pausa que fecha uma frase
+    const MAX_SEGMENT_MS = 12000 // fala corrida sem pausa: corta mesmo assim
+    const LISTENING = 'Ouvindo... fale normalmente'
+    // Legenda ao vivo: retranscreve o trecho em andamento assim que o parcial anterior volta
+    // (no mínimo a cada PARTIAL_MS). Na GPU cada um leva ~0,4s => ~1 atualização por palavra.
+    // Só no servidor local — na OpenAI cada parcial seria cobrado de novo.
+    const PARTIAL_MS = 300
+    const PARTIAL_TIMEOUT_MS = 3000 // parcial atrasado não serve mais para a legenda
+    const FINAL_TIMEOUT_MS = { local: 15000, openai: 30000 } // final travado não pode bloquear os seguintes
+    let lastPartialAt = 0
+    let partialBusy = false
+    let partialAbort = null // cancela o parcial em andamento quando a frase fecha (o final tem prioridade)
+    let finalsInFlight = 0
+    let starting = false
+    let lastFinalText = ''
     let audioStream = null
-    let audioChunks = []
+    let recorder = null
     let isRecording = false
+    let segmentStart = 0
+    let lastVoiceAt = 0
+    let heardVoice = false
+    let transcribeChain = Promise.resolve()
+
+    function startSegment() {
+      const chunks = []
+      const rec = new MediaRecorder(audioStream, { mimeType: MIME })
+      rec.segId = newSegId('mic')
+      rec.chunks = chunks // lido pelo parcial enquanto o segmento grava
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data)
+      }
+      rec.onstop = () => {
+        if (!rec.hadVoice || chunks.length === 0) return // só silêncio: não gasta transcrição
+        const blob = new Blob(chunks, { type: MIME })
+        transcribeChain = transcribeChain.then(() => transcribeAndSend(blob, rec.segId, rec.audioMs, rec.speechEnd))
+      }
+      rec.start(250) // entrega pedaços a cada 250ms; do 1º até o último formam um webm válido
+      recorder = rec
+      segmentStart = nowMs()
+      heardVoice = false
+      tel('seg.open', rec.segId)
+    }
+
+    // Fecha o segmento atual e, se ainda gravando, já abre o próximo
+    function cutSegment(cause) {
+      const rec = recorder
+      rec.hadVoice = heardVoice
+      rec.audioMs = Math.round(nowMs() - segmentStart)
+      rec.speechEnd = lastVoiceAt
+      if (heardVoice) tel('seg.cut', rec.segId, { cause, lastVoiceAt, audioMs: rec.audioMs })
+      partialAbort?.abort() // o texto final desta frase passa na frente do parcial
+      if (isRecording) startSegment()
+      rec.stop()
+    }
+
+    function onAudioLevel(level) {
+      if (!isRecording) return
+      const now = nowMs()
+      if (level > VAD_LEVEL) {
+        if (!heardVoice) tel('voice.on', recorder.segId, { level: Math.round(level) })
+        heardVoice = true
+        lastVoiceAt = now
+      }
+      const paused = heardVoice && now - lastVoiceAt > SILENCE_MS
+      if (paused || now - segmentStart > MAX_SEGMENT_MS) cutSegment(paused ? 'pausa' : 'limite de duração')
+      // Parciais só com o servidor local e nunca concorrendo com um texto final em andamento
+      else if (heardVoice && !partialBusy && !finalsInFlight && now - lastPartialAt > PARTIAL_MS && !provider().needsKey) {
+        sendPartial(recorder)
+      }
+    }
+
+    // Caixa de transcrição: última frase final + parcial em andamento (nunca "volta" para texto antigo)
+    function showTranscript(partial) {
+      transcript.textContent = partial ? (lastFinalText ? lastFinalText + '\n' : '') + partial + ' …' : lastFinalText
+    }
+
+    // Texto provisório do trecho que ainda está sendo falado (não vai para o avatar)
+    async function sendPartial(rec) {
+      partialBusy = true
+      lastPartialAt = nowMs()
+      const audioMs = Math.round(lastPartialAt - segmentStart)
+      tel('partial.req', rec.segId, { audioMs })
+      const controller = new AbortController()
+      partialAbort = controller
+      try {
+        const text = await transcribe(new Blob(rec.chunks, { type: MIME }), PARTIAL_TIMEOUT_MS, controller)
+        const ms = Math.round(nowMs() - lastPartialAt)
+        // Descarta se o segmento já fechou: o texto final dele já foi (ou vai ser) enviado
+        if (text && rec === recorder && isRecording) {
+          tel('partial.res', rec.segId, { ms, audioMs, words: countWords(text), text })
+          showTranscript(text)
+          window.sinalize?.partial?.(text, { seg: rec.segId })
+        } else {
+          tel('partial.stale', rec.segId, { ms, audioMs })
+        }
+      } catch (e) {
+        tel(controller.signal.aborted ? 'partial.abort' : 'partial.err', rec.segId, { error: String(e.message || e) })
+      } finally {
+        if (partialAbort === controller) partialAbort = null
+        partialBusy = false
+      }
+    }
 
     async function startRecording() {
-      const key = apiKeyInput.value.trim()
-      if (!key.startsWith('sk-')) {
+      if (starting) return // duplo clique durante o getUserMedia abriria dois fluxos
+      if (provider().needsKey && !apiKeyInput.value.trim().startsWith('sk-')) {
         setMicState('Chave OpenAI necessária', 'error')
-        setStatus('Insira sua chave no menu de configurações', 'error')
+        setStatus('Insira sua chave ou escolha o servidor local nas configurações', 'error')
 
         // Abre a gaveta de configurações e destaca o campo
         settingsDrawer.classList.remove('collapsed')
@@ -1020,6 +1223,7 @@
         return
       }
 
+      starting = true
       try {
         audioStream = await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -1032,113 +1236,129 @@
         setMicState('Microfone indisponível', 'error')
         setStatus('Permissão de microfone negada: ' + e.message, 'error')
         return
+      } finally {
+        starting = false
       }
 
-      audioChunks = []
-      const mimeType = 'audio/webm;codecs=opus'
-      mediaRecorder = new MediaRecorder(audioStream, { mimeType })
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data)
-      }
-
-      mediaRecorder.onstop = async () => {
-        stopAudioMeter()
-
-        // Libera os tracks de áudio
-        if (audioStream) {
-          audioStream.getTracks().forEach((t) => t.stop())
-          audioStream = null
-        }
-
-        // Notifica a janela do avatar que a gravação encerrou
-        if (window.sinalize && window.sinalize.setRecordingStatus) {
-          window.sinalize.setRecordingStatus(false)
-        }
-
-        if (audioChunks.length === 0) {
-          setMicState('Nenhum áudio capturado')
-          return
-        }
-
-        const blob = new Blob(audioChunks, { type: mimeType })
-        audioChunks = []
-
-        await transcribeAndSend(blob)
-      }
-
-      mediaRecorder.start()
       isRecording = true
-
-      // Inicia visualizador de áudio
-      startAudioMeter(audioStream)
+      sttProvider.disabled = true // trocar de servidor no meio da gravação misturaria os dois
+      startSegment()
+      startAudioMeter(audioStream, onAudioLevel)
 
       // Atualiza UI para estado gravando
       btnMicIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>`
       btnMicText.textContent = 'Parar gravação'
       btnMic.classList.add('recording')
-      setMicState('Gravando... fale agora', 'recording')
-      setStatus('Aguardando você parar a gravação...')
+      setMicState(LISTENING, 'recording')
+      setStatus('Cada pausa na fala envia uma frase ao avatar')
 
       // Notifica o avatar para ativar badge "Ao vivo"
-      if (window.sinalize && window.sinalize.setRecordingStatus) {
-        window.sinalize.setRecordingStatus(true)
-      }
+      window.sinalize?.setRecordingStatus?.(true)
     }
 
     function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop()
-      }
       isRecording = false
+      sttProvider.disabled = false
+      stopAudioMeter()
+
+      // Envia o trecho final e só então libera o microfone
+      const stream = audioStream
+      audioStream = null
+      recorder.addEventListener('stop', () => stream.getTracks().forEach((t) => t.stop()))
+      cutSegment('parada')
+
+      window.sinalize?.setRecordingStatus?.(false)
       btnMicIcon.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>`
       btnMicText.textContent = 'Iniciar gravação'
       btnMic.classList.remove('recording')
+      setMicState('Gravação encerrada')
     }
 
-    async function transcribeAndSend(blob) {
-      const key = apiKeyInput.value.trim()
-      setMicState('Transcrevendo via Whisper...', 'processing')
-      btnMic.disabled = true
-
+    // Envia o áudio ao servidor escolhido e devolve o texto ('' se nada útil).
+    // timeoutMs: aborta a requisição travada; controller: permite cancelar de fora (parcial).
+    async function transcribe(blob, timeoutMs, controller = new AbortController()) {
+      const p = provider()
       const form = new FormData()
       form.append('file', blob, 'audio.webm')
-      form.append('model', 'whisper-1')
+      form.append('model', p.model)
       form.append('language', 'pt')
 
+      // Servidor local: sem headers extras, assim o POST não dispara preflight CORS
+      const headers = p.needsKey ? { Authorization: 'Bearer ' + apiKeyInput.value.trim() } : {}
+      const timer = timeoutMs ? setTimeout(() => controller.abort(new Error('timeout')), timeoutMs) : null
+      let res
       try {
-        const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + key },
-          body: form
-        })
+        res = await fetch(p.url, { method: 'POST', headers, body: form, signal: controller.signal })
+      } finally {
+        clearTimeout(timer)
+      }
+      if (!res.ok) {
+        const err = new Error('HTTP ' + res.status)
+        err.status = res.status
+        err.body = await res.text()
+        throw err
+      }
+      const text = ((await res.json()).text || '').trim()
+      // Whisper "alucina" esta legenda em trechos de ruído
+      return /amara\.org/i.test(text) ? '' : text
+    }
 
-        if (!res.ok) {
-          const errText = await res.text()
-          console.error('Whisper API erro:', res.status, errText)
-          setMicState('Erro Whisper: ' + res.status, 'error')
-          setStatus('Falha na transcrição da OpenAI', 'error')
+    async function transcribeAndSend(blob, segId, audioMs, speechEnd) {
+      const p = provider()
+      setMicState('Transcrevendo...', 'processing')
+      const t0 = nowMs()
+      tel('final.req', segId, { audioMs, provider: sttProvider.value })
+      finalsInFlight++
+
+      try {
+        let text
+        try {
+          text = await transcribe(blob, FINAL_TIMEOUT_MS[sttProvider.value] || 30000)
+        } catch (e) {
+          const status = e.status || (e.name === 'AbortError' || e.message === 'timeout' ? 'timeout' : 'rede')
+          tel('final.err', segId, { status, ms: Math.round(nowMs() - t0) })
+          if (!e.status) throw e // erro de rede/timeout: tratado abaixo
+          console.error('Transcrição erro:', e.status, e.body)
+          setMicState('Erro na transcrição: ' + e.status, 'error')
+          setStatus(p.needsKey ? 'Falha na transcrição da OpenAI' : 'Falha no servidor local', 'error')
           return
         }
 
-        const data = await res.json()
-        const text = (data.text || '').trim()
-
+        const ms = Math.round(nowMs() - t0)
         if (!text) {
-          setMicState('Nenhum texto reconhecido')
-          setStatus('Whisper não detectou palavras')
+          tel('final.empty', segId, { ms, audioMs })
+          setMicState(isRecording ? LISTENING : 'Nenhum texto reconhecido', isRecording ? 'recording' : undefined)
           return
         }
 
-        transcript.textContent = text
-        setMicState('Transcrição concluída', 'ok')
-        send(text)
+        tel('final.res', segId, { ms, audioMs, text, words: countWords(text) })
+        lastFinalText = text
+        showTranscript(null)
+        setMicState(isRecording ? LISTENING : 'Transcrição concluída', isRecording ? 'recording' : 'ok')
+        send(text, segId, speechEnd)
       } catch (e) {
         console.error('fetch falhou:', e)
-        setMicState('Erro de conexão', 'error')
-        setStatus('Sem conexão com a OpenAI', 'error')
+        const timedOut = e.name === 'AbortError' || e.message === 'timeout'
+        setMicState(timedOut ? 'Transcrição demorou demais (frase perdida)' : 'Erro de conexão', 'error')
+        setStatus(p.needsKey ? 'Sem conexão com a OpenAI' : 'Servidor local fora do ar (localhost:8000)', 'error')
       } finally {
-        btnMic.disabled = false
+        finalsInFlight--
+      }
+    }
+
+    // === Estado da fila do avatar (vem da janela do avatar a cada 250ms) ===
+    const avatarState = document.getElementById('avatarState')
+    const avatarStateText = document.getElementById('avatarStateText')
+    window.sinalize?.onAvatarState?.(({ lagMs, pending, backlogMs, speed }) => {
+      avatarState.hidden = pending === 0 && lagMs < 1500
+      avatarStateText.textContent = `Avatar: atraso ${(lagMs / 1000).toFixed(0)} s · ${pending} na fila` +
+        (pending ? ` (≈${(backlogMs / 1000).toFixed(0)} s)` : '') + ` · ${speed}x`
+      avatarState.className = 'avatar-state' + (lagMs > 8000 ? ' high' : lagMs > 3000 ? ' warn' : '')
+    })
+
+    function flushAvatarQueue() {
+      if (confirm('Esvaziar a fila do avatar? As frases pendentes continuam na legenda, mas não serão sinalizadas.')) {
+        window.sinalize?.flushAvatarQueue?.()
       }
     }
 
