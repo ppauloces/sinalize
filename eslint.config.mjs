@@ -1,0 +1,26 @@
+import js from '@eslint/js'
+import tseslint from 'typescript-eslint'
+import reactHooks from 'eslint-plugin-react-hooks'
+import globals from 'globals'
+
+export default tseslint.config(
+  // renderer/ e bench/ são legados fora do build (bench mede o widget antigo).
+  { ignores: ['out/', 'node_modules/', 'renderer/', 'bench/', 'src/renderer/public/'] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
+    },
+  },
+  {
+    files: ['src/main/**/*.ts', 'src/preload/**/*.ts', '*.config.ts'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['src/renderer/**/*.{ts,tsx}'],
+    languageOptions: { globals: globals.browser },
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
+  },
+)

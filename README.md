@@ -46,12 +46,13 @@ O Sinalize automatiza a tradução de português para Libras em situações onde
 
 | Camada | Tecnologia |
 |---|---|
-| Desktop | Electron 34 |
-| UI | HTML/CSS/JS vanilla |
-| Reconhecimento de voz | OpenAI Whisper API (`whisper-1`) |
-| Tradução | VLibras Player Web (open source — governo federal) |
-| Avatar 3D | Unity WebGL + dicionário de sinais VLibras |
-| Comunicação entre janelas | IPC nativo do Electron |
+| Desktop | Electron 34 + electron-vite |
+| UI | React 19, TypeScript (strict), Tailwind CSS 4, shadcn/ui, Lucide |
+| Reconhecimento de voz | Whisper: OpenAI (`gpt-4o-mini-transcribe`) ou servidor local speaches |
+| Tradução | Serviço de tradução do VLibras (português → glosa) |
+| Avatar 3D | Player Unity WebGL oficial do VLibras, sem o widget (fundo transparente) |
+| Comunicação entre janelas | IPC tipado do Electron (`src/shared`) |
+| Qualidade | Vitest, ESLint (typescript-eslint + react-hooks) |
 
 ## 🚀 Como rodar
 
@@ -59,7 +60,12 @@ O Sinalize automatiza a tradução de português para Libras em situações onde
 git clone <repo>
 cd sinalize
 npm install
-npm.cmd start
+npm run dev     # desenvolvimento com recarga automática
+npm start       # compila e abre a versão de produção
+```
+
+```bash
+npm run check   # typecheck + lint + testes + build
 ```
 
 A janela do **Studio** reúne o palco do avatar, a legenda e o painel de controle. Modos de exibição:
@@ -68,28 +74,28 @@ A janela do **Studio** reúne o palco do avatar, a legenda e o painel de control
 - **Overlay** — avatar e legendas flutuando sobre PowerPoint, navegador, PDF ou reuniões
   (aba *Overlay* ou `Ctrl+Alt+Shift+O`; detalhes, validação e limitações em [docs/overlay.md](docs/overlay.md))
 
-```bash
-npm test   # testes de geometria multi-monitor e validação das configurações do overlay
-```
-
 ## 📁 Estrutura
 
 ```
-sinalize/
-├── main.js                  # Processo principal Electron: janela do Studio, protocolo app://, diagnóstico
-├── preload.js               # API segura (window.sinalize) para todas as janelas
-├── main/
-│   ├── overlay-manager.js   # Modo Overlay: janelas flutuantes, monitores, atalhos, IPC validado
-│   ├── overlay-settings.js  # Padrões, presets e validação das configurações do overlay
-│   └── display.js           # Geometria multi-monitor
-├── renderer/
-│   ├── index.html           # Studio (palco, legenda, controle, glossário, aba Overlay)
-│   ├── vlibras-stage.html   # Player VLibras (Unity) sem o widget, fundo transparente
-│   ├── avatar-overlay.html  # Avatar flutuante
-│   └── caption-overlay.html # Legendas flutuantes
-├── test/                    # npm test
-└── package.json
+src/
+├── main/                    # Processo principal
+│   ├── index.ts             # Janela do Studio, protocolo app://, tradução VLibras, diagnóstico
+│   ├── telemetry.ts         # Métricas por segmento (painel Ctrl+Shift+D)
+│   └── overlay/             # Modo Overlay: OverlayManager, configurações validadas, geometria multi-monitor
+├── preload/index.ts         # API window.sinalize (contextBridge)
+├── shared/                  # Contratos tipados de IPC e do overlay
+└── renderer/
+    ├── studio.html, avatar-overlay.html, caption-overlay.html
+    ├── public/              # vlibras-stage.html (player Unity) e diag.html
+    └── src/
+        ├── apps/            # Entradas React: studio, avatar-overlay, caption-overlay
+        ├── features/        # avatar (fila, player), captions, glossary, session (gravação, STT), overlay
+        ├── components/ui/   # shadcn/ui
+        └── lib/             # store observável, telemetria, utilitários
 ```
+
+A lógica de tempo real (gravação com VAD, fila de sinalização, legenda) fica em classes TypeScript fora
+do React, observadas com `useSyncExternalStore`: os timers de 50 ms não disparam renderizações.
 
 ## ⚠️ Limitações conhecidas
 

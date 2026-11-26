@@ -43,8 +43,9 @@ O widget não oferece opção de fundo. O bridge do Unity (`PlayerManager`, `Emo
 
 Caminho 2 da priorização (configurar a renderização existente), **sem recompilar o player e sem chroma
 key**: o Sinalize dirige o Unity oficial diretamente pelo mesmo protocolo `postMessage` que o widget usa
-(`renderer/vlibras-stage.html`) e descarta o painel HTML do widget. A tradução português → glosa usa o
-mesmo serviço do widget (`POST https://traducao2.vlibras.gov.br/translate`). Nenhum mecanismo de
+(`src/renderer/public/vlibras-stage.html`) e descarta o painel HTML do widget. A tradução português →
+glosa usa o mesmo serviço do widget (`POST https://traducao2.vlibras.gov.br/translate`), chamado pelo
+processo principal: o serviço não envia CORS, e assim o Studio roda com `webSecurity` ligado. Nenhum mecanismo de
 segurança do Electron foi desligado para isso; as janelas do overlay usam `contextIsolation`, `sandbox`
 e `nodeIntegration: false`.
 
@@ -60,7 +61,7 @@ redistribuição de binários.
 ## 2. Arquitetura
 
 ```text
-Microfone → transcrição (Whisper) → Studio (renderer/index.html)
+Microfone → transcrição (Whisper) → Studio (src/renderer/src/apps/studio)
                                       ├── legenda do Studio ──caption:event──▶ janela de legendas
                                       └── fila FIFO de sinalização
                                              └── motor Unity: palco do Studio  OU  janela do avatar
@@ -77,14 +78,16 @@ Microfone → transcrição (Whisper) → Studio (renderer/index.html)
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `main/overlay-manager.js` | `OverlayManager`: janelas, modo edição/apresentação, monitores, atalhos globais, IPC validado, persistência, recuperação de crash |
-| `main/overlay-settings.js` | padrões, presets, validação/merge das configurações, tamanhos derivados |
-| `main/display.js` | geometria multi-monitor (ancoragens, limites, monitor desconectado) |
-| `renderer/vlibras-stage.html` | player VLibras sem o widget (usado no Studio e no overlay) |
-| `renderer/avatar-overlay.html` | janela do avatar: ponte do motor, barra de ferramentas, alça de redimensionamento |
-| `renderer/caption-overlay.html` | janela de legendas: três origens de texto, estilo, permanência |
-| `renderer/index.html` | aba **Overlay** do Studio, roteamento do motor, espelhamento da legenda |
-| `preload.js` | API `window.sinalize.overlay / player / caption` |
+| `src/main/overlay/overlay-manager.ts` | `OverlayManager`: janelas, modo edição/apresentação, monitores, atalhos globais, IPC validado, persistência, recuperação de crash |
+| `src/main/overlay/overlay-settings.ts` | padrões, presets, validação/merge das configurações, tamanhos derivados |
+| `src/main/overlay/display.ts` | geometria multi-monitor (ancoragens, limites, monitor desconectado) |
+| `src/shared/overlay.ts`, `src/shared/api.ts` | contratos tipados (configurações, comandos, eventos, canais IPC) |
+| `src/renderer/public/vlibras-stage.html` | player VLibras sem o widget (usado no Studio e no overlay) |
+| `src/renderer/src/apps/avatar-overlay/` | janela do avatar: ponte do motor, barra de ferramentas, alça de redimensionamento |
+| `src/renderer/src/apps/caption-overlay/` | janela de legendas: três origens de texto, estilo, permanência |
+| `src/renderer/src/features/overlay/` | aba **Overlay** do Studio e estado espelhado do main |
+| `src/renderer/src/features/session/session.ts` | sessão única: roteamento do motor e espelhamento da legenda |
+| `src/preload/index.ts` | API `window.sinalize.overlay / player / caption` |
 
 **Contrato IPC** (validado no processo principal, por remetente):
 
@@ -119,7 +122,8 @@ Windows 11 (26200), Electron 34.5.8, dois monitores: 1920×1080 a 100% (principa
 | Persistência | ✅ após reiniciar, posição, monitor e preset restaurados de `overlay.json` |
 | Recuperação de falha | ✅ `Page.crash` no renderer do avatar → janela recriada → Unity recarregado → sinalização retomada |
 | Atalhos globais | ✅ seis atalhos registrados; duplicados e inválidos são reportados no painel |
-| Testes unitários | ✅ `npm test` (geometria, validação, presets, aceleradores) |
+| Testes unitários | ✅ `npm test` (geometria, validação, presets, aceleradores, fila, legendas, glossário, telemetria) |
+| Gravação contínua | ✅ fala sintética em pt-BR injetada como microfone: VAD cortou na pausa, Whisper local transcreveu as duas frases, parciais ao vivo, legenda e fila |
 
 ### Consumo (instância com Studio + overlay, 12 threads de CPU)
 

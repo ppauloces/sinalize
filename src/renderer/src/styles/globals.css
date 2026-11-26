@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Paleta do Sinalize (azul institucional) mapeada nos tokens do shadcn/ui. */
+:root {
+  --radius: 0.625rem;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #0b4f9f;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eff6ff;
+  --accent-foreground: #0b4f9f;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #0b4f9f 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #1d4ed8 0%, #093e7e 100%);
+  --stage: radial-gradient(circle at 50% 40%, #ffffff 0%, #eff6ff 58%, #e2e8f0 100%);
+  --caption: rgb(15 23 42 / 0.86);
+  --success: #047857;
+  --success-soft: #ecfdf5;
+  --success-border: #a7f3d0;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --warning-border: #fde68a;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #162235;
+  --secondary-foreground: #f8fafc;
+  --muted: #162235;
+  --muted-foreground: #94a3b8;
+  --accent: rgb(59 130 246 / 0.14);
+  --accent-foreground: #93c5fd;
+  --destructive: #ef4444;
+  --border: #334155;
+  --input: #334155;
+  --ring: #3b82f6;
+
+  --brand-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+  --stage: radial-gradient(circle at 50% 38%, #1e293b 0%, #0f172a 68%, #090f1d 100%);
+  --caption: rgb(15 23 42 / 0.88);
+  --success: #34d399;
+  --success-soft: rgb(16 185 129 / 0.14);
+  --success-border: rgb(16 185 129 / 0.34);
+  --warning: #fcd34d;
+  --warning-soft: rgb(245 158 11 / 0.14);
+  --warning-border: rgb(245 158 11 / 0.32);
+  --danger: #fca5a5;
+  --danger-soft: rgb(239 68 68 / 0.14);
+  --danger-border: rgb(239 68 68 / 0.35);
+}
+
+@theme inline {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-caption: var(--caption);
+  --animate-caption-pop: caption-pop 0.28s ease-out;
+  --animate-pulse-dot: pulse-dot 1.2s ease-in-out infinite;
+
+  @keyframes caption-pop {
+    0% { transform: scale(0.98); opacity: 0.75; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Janelas do overlay: nada opaco fora do personagem e da caixa da legenda. */
+html.overlay,
+html.overlay body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
